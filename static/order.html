@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#d9232d">
+  <meta name="description" content="Pantau status pesanan belanja Anda di Rama Store secara langsung">
+  <title>Rama Store - Pantau Status Pesanan</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <!-- Styling -->
+  <link rel="stylesheet" href="css/kiosk.css">
+  <link rel="stylesheet" href="css/order.css">
+</head>
+<body class="tracking-body">
+
+  <div class="tracking-container">
+    
+    <!-- Header Card -->
+    <header class="tracking-header-card">
+      <div class="tracking-brand">
+        <div class="tracking-brand-logo">
+          <i class="fa-solid fa-store"></i>
+        </div>
+        <div class="tracking-brand-text">
+          <h2>Rama<span>Store</span></h2>
+          <p>Pelacakan Pesanan Pelanggan</p>
+        </div>
+      </div>
+      <div>
+        <a href="index.html" class="btn-back-kiosk">
+          <i class="fa-solid fa-cart-shopping"></i>
+          <span>Belanja</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Search / Change Order ID Card -->
+    <div class="tracking-search-card">
+      <form id="tracking-search-form" style="display: flex; gap: 0.5rem; width: 100%;">
+        <input type="text" id="tracking-search-input" class="tracking-search-input" placeholder="Masukkan No. Pesanan (Contoh: RAMA-88219)..." required>
+        <button type="submit" class="btn-track-submit">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <span>Cek</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Main Live Tracking Content -->
+    <main id="tracking-main-content">
+      <!-- Injected via order.js -->
+    </main>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/store.js"></script>
+  <script src="js/order.js"></script>
+</body>
+</html>
