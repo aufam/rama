@@ -1,5 +1,5 @@
 /**
- * store.js - Rama Store Data Layer (Bahasa Indonesia)
+ * store.js - Rama Swalayan Data Layer (Bahasa Indonesia)
  * Mengelola produk, kategori, keranjang belanja, manajemen gambar (Image Database),
  * manajemen pesanan (Order Management & Tracking System), serta penyimpanan lokal (localStorage).
  * Dilengkapi dengan penanda komentar TODO untuk integrasi API/Database backend masa depan.
@@ -160,7 +160,7 @@ const DEFAULT_PRODUCTS = [
 
 // Status pesanan yang didukung
 const ORDER_STATUSES = {
-  RECEIVED: { id: 'received', label: 'Diterima', icon: 'fa-inbox', desc: 'Pesanan telah diterima oleh Rama Store dan sedang menunggu antrean.' },
+  RECEIVED: { id: 'received', label: 'Diterima', icon: 'fa-inbox', desc: 'Pesanan telah diterima oleh Rama Swalayan dan sedang menunggu antrean.' },
   PREPARING: { id: 'preparing', label: 'Disiapkan', icon: 'fa-boxes-packing', desc: 'Barang pesanan Anda sedang disiapkan dan dikemas dengan teliti.' },
   DELIVERING: { id: 'delivering', label: 'Diantar', icon: 'fa-truck-fast', desc: 'Pesanan sedang dalam perjalanan pengiriman menuju alamat Anda.' },
   COMPLETED: { id: 'completed', label: 'Selesai', icon: 'fa-circle-check', desc: 'Pesanan telah selesai diantar dan diterima oleh pembeli.' }
@@ -549,7 +549,7 @@ const Store = {
     const cart = this.getCart();
     const cleanNotes = notes ? notes.trim() : '';
     const existingIndex = cart.findIndex(item => item.id === product.id && (item.notes || '') === cleanNotes);
-    
+
     if (existingIndex > -1) {
       cart[existingIndex].quantity += quantity;
     } else {
@@ -622,7 +622,7 @@ const Store = {
       dateStyle: 'full',
       timeStyle: 'short'
     });
-    
+
     const { totalCount, totalPrice } = this.getCartTotal(currentCart);
     const activeOrderId = orderId || 'RAMA-XXXXX';
     const trackingUrl = this.getOrderTrackingUrl(activeOrderId);
@@ -631,7 +631,7 @@ const Store = {
     text += `🆔 *No. Pesanan:* ${activeOrderId}\n`;
     text += `📅 *Waktu Pemesanan:* ${dateStr}\n`;
     text += `------------------------------------\n`;
-    
+
     const hasCustomerInfo = customerInfo.name || customerInfo.address || customerInfo.phone || customerInfo.notes;
     if (hasCustomerInfo) {
       text += `👤 *DATA PEMESAN:*\n`;
@@ -655,10 +655,16 @@ const Store = {
     text += `------------------------------------\n`;
     text += `💰 *TOTAL ESTIMASI: ${this.formatCurrency(totalPrice)}*\n`;
     text += `------------------------------------\n`;
-    text += `📍 *Pantau order anda di:*\n${trackingUrl}\n`;
-    text += `------------------------------------\n`;
-    text += `Halo Rama Store, saya ingin memesan barang di atas. Mohon konfirmasi ketersediaan dan info pembayaran/ongkirnya ya. Terima kasih! 🙏`;
+    text += `Halo Rama Swalayan, saya ingin memesan barang di atas. Mohon konfirmasi ketersediaan dan info pembayaran/ongkirnya ya. Terima kasih! 🙏`;
 
     return text;
+  },
+
+  /**
+   * Membuat tautan wa.me dengan teks terenkode ke nomor admin
+   */
+  getWhatsAppSendUrl(adminPhone, text) {
+    const cleanPhone = adminPhone.replace(/[^0-9]/g, '');
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
   }
 };

@@ -58,15 +58,21 @@ window.switchAdminTab = function(tabName) {
   const titleEl = document.getElementById('admin-view-title');
   const subEl = document.getElementById('admin-view-subtitle');
   const btnAddProduct = document.getElementById('btn-add-product');
+  const titleMobile = document.getElementById('admin-view-title-mobile');
+  const btnAddMobile = document.getElementById('btn-add-product-mobile');
 
   if (tabName === 'products') {
     if (titleEl) titleEl.textContent = 'Manajemen Inventaris & Katalog';
     if (subEl) subEl.textContent = 'Kelola daftar barang, satuan, harga jual, dan sisa stok toko Rama.';
+    if (titleMobile) titleMobile.textContent = 'Kelola Produk';
     if (btnAddProduct) btnAddProduct.style.display = 'flex';
+    if (btnAddMobile) btnAddMobile.style.display = 'flex';
   } else {
     if (titleEl) titleEl.textContent = 'Manajemen & Status Pesanan Pelanggan';
     if (subEl) subEl.textContent = 'Pantau dan ubah alur status pesanan (Diterima ➔ Disiapkan ➔ Diantar ➔ Selesai).';
+    if (titleMobile) titleMobile.textContent = 'Status Pesanan';
     if (btnAddProduct) btnAddProduct.style.display = 'none';
+    if (btnAddMobile) btnAddMobile.style.display = 'none';
   }
 };
 

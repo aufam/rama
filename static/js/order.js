@@ -208,9 +208,9 @@ function renderOrderDetails(order) {
       </div>
 
       <div style="margin-top: 1.25rem; text-align: center;">
-        <a href="https://wa.me/?text=${encodeURIComponent(`Halo Rama Store, saya ingin menanyakan status pesanan saya dengan No. Pesanan ${order.id}`)}" target="_blank" class="btn-checkout" style="display: inline-flex; text-decoration: none; justify-content: center; width: 100%;">
+        <a href="https://wa.me/?text=${encodeURIComponent(`Halo Rama Swalayan, saya ingin menanyakan status pesanan saya dengan No. Pesanan ${order.id}`)}" target="_blank" class="btn-checkout" style="display: inline-flex; text-decoration: none; justify-content: center; width: 100%;">
           <i class="fa-brands fa-whatsapp" style="font-size: 1.2rem;"></i>
-          <span>Hubungi CS Rama Store</span>
+          <span>Hubungi CS Rama Swalayan</span>
         </a>
       </div>
     </div>

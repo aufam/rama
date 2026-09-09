@@ -82,10 +82,10 @@ function setupEventListeners() {
     });
   });
 
-  // Tombol Salin Teks Pesanan
-  const btnCopyOrder = document.getElementById('btn-copy-order');
-  if (btnCopyOrder) {
-    btnCopyOrder.addEventListener('click', handleCopyOrderText);
+  // Tombol Kirim Teks Pesanan WhatsApp (Form submit handled via handleSendWhatsAppOrder)
+  const checkoutForm = document.getElementById('checkout-form');
+  if (checkoutForm) {
+    checkoutForm.addEventListener('submit', handleSendWhatsAppOrder);
   }
 
   // Update pratinjau teks saat pengguna mengisi form data pemesan
@@ -143,7 +143,7 @@ function renderCategories() {
       activeCategoryId = btn.getAttribute('data-cat-id');
       categoryBar.querySelectorAll('.cat-chip-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      
+
       // Auto-scroll the active chip into view horizontally
       btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
       renderProducts();
@@ -164,7 +164,7 @@ function renderProducts() {
 
   // Filter berdasarkan pencarian kata kunci
   if (searchQuery) {
-    filtered = filtered.filter(p => 
+    filtered = filtered.filter(p =>
       p.name.toLowerCase().includes(searchQuery) ||
       (p.description && p.description.toLowerCase().includes(searchQuery))
     );
@@ -184,13 +184,14 @@ function renderProducts() {
   grid.innerHTML = filtered.map(p => {
     const icon = getCategoryIcon(p.category);
     const isOutOfStock = p.stock <= 0;
-    const thumbHtml = p.image 
+    const thumbHtml = p.image
       ? `<img src="${p.image}" alt="${p.name}">`
       : `<i class="fa-solid ${icon}"></i>`;
-    
+
+    // NOTE: stock is disabled
     return `
       <div class="product-card" onclick="openProductDetailModal('${p.id}')">
-        <span class="product-stock-tag ${p.stock <= 5 ? 'low' : ''}">
+        <span class="product-stock-tag ${p.stock <= 5 ? 'low' : ''}" hidden>
           ${p.stock > 0 ? `Sisa ${p.stock}` : 'Habis'}
         </span>
         <div class="product-card-top">
@@ -198,7 +199,7 @@ function renderProducts() {
             ${thumbHtml}
           </div>
           <h4 class="product-name" title="${p.name}">${p.name}</h4>
-          <p class="product-desc">${p.description || 'Pilihan berkualitas Rama Store.'}</p>
+          <p class="product-desc">${p.description || 'Pilihan berkualitas Rama Swalayan.'}</p>
         </div>
         <div class="product-card-bottom">
           <div class="product-price">${Store.formatCurrency(p.price)} <span class="product-unit">/${p.unit || 'buah'}</span></div>
@@ -228,12 +229,12 @@ function openProductDetailModal(productId) {
   itemModalQty = 1;
 
   document.getElementById('modal-item-title').textContent = product.name;
-  document.getElementById('modal-item-desc').textContent = product.description || 'Produk segar dan berkualitas Rama Store.';
+  document.getElementById('modal-item-desc').textContent = product.description || 'Produk segar dan berkualitas Rama Swalayan.';
   document.getElementById('modal-item-price').textContent = `${Store.formatCurrency(product.price)} / ${product.unit || 'buah'}`;
-  
+
   const modalIcon = document.getElementById('modal-item-icon');
   const modalImg = document.getElementById('modal-item-img');
-  
+
   if (product.image) {
     if (modalImg) {
       modalImg.src = product.image;
@@ -337,6 +338,11 @@ function openCheckoutModal() {
   if (!currentCheckoutOrderId) {
     currentCheckoutOrderId = 'RAMA-' + Math.floor(10000 + Math.random() * 90000);
   }
+
+  // Hide tracking link container on modal open
+  const trackingContainer = document.getElementById('tracking-link-container');
+  if (trackingContainer) trackingContainer.style.display = 'none';
+
   updateOrderPreview();
   const modal = document.getElementById('modal-checkout');
   if (modal) modal.classList.add('active');
@@ -364,9 +370,21 @@ function updateOrderPreview() {
   previewBox.textContent = orderText;
 }
 
-async function handleCopyOrderText() {
+async function handleSendWhatsAppOrder(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
   const customerInfo = getCustomerFormData();
   const cart = Store.getCart();
+
+  if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) {
+    showToast('Harap lengkapi Nama, No. WhatsApp, dan Alamat Pengiriman!', 'error');
+    return;
+  }
+
+  if (!cart || cart.length === 0) {
+    showToast('Keranjang belanja kosong', 'error');
+    return;
+  }
 
   if (!currentCheckoutOrderId) {
     currentCheckoutOrderId = 'RAMA-' + Math.floor(10000 + Math.random() * 90000);
@@ -376,31 +394,24 @@ async function handleCopyOrderText() {
   await Store.createOrder(customerInfo, cart, currentCheckoutOrderId);
 
   const orderText = Store.formatOrderText(customerInfo, cart, currentCheckoutOrderId);
+  const waAdminPhone = '6285327961606';
+  const waUrl = Store.getWhatsAppSendUrl(waAdminPhone, orderText);
 
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(orderText);
-    } else {
-      const textarea = document.createElement('textarea');
-      textarea.value = orderText;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-    }
+  // Tampilkan tautan pantau pesanan
+  const trackingUrl = Store.getOrderTrackingUrl(currentCheckoutOrderId);
+  const trackingContainer = document.getElementById('tracking-link-container');
+  const trackingLink = document.getElementById('tracking-url-link');
 
-    const badge = document.getElementById('copy-success-badge');
-    if (badge) {
-      badge.classList.add('active');
-      setTimeout(() => {
-        badge.classList.remove('active');
-      }, 4000);
-    }
-    showToast('Teks pesanan & tautan pantau berhasil disalin! Silakan tempel di WhatsApp.', 'success');
-  } catch (err) {
-    console.error('Clipboard copy error:', err);
-    showToast('Gagal menyalin otomatis. Silakan salin manual dari kotak teks.', 'error');
+  if (trackingContainer && trackingLink) {
+    trackingLink.href = trackingUrl;
+    trackingContainer.style.display = 'block';
+    trackingContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+
+  showToast('Pesanan berhasil dibuat! Membuka WhatsApp admin...', 'success');
+
+  // Buka WhatsApp di tab/aplikasi baru
+  window.open(waUrl, '_blank');
 }
 
 window.closeAllModals = function() {
