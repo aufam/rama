@@ -413,6 +413,21 @@ body {
   word-break: break-word;
 }
 
+.product-price-original {
+  text-decoration: line-through;
+  opacity: 0.6;
+  font-size: 0.85em;
+}
+
+.product-discount {
+  font-size: 0.75em;
+  font-weight: bold;
+}
+
+.product-price-sale {
+  font-weight: bold;
+}
+
 .product-unit {
   font-size: 0.7rem;
   color: var(--gray-500);
@@ -956,6 +971,7 @@ body {
 }
 
 .toast {
+  cursor: pointer;
   background: var(--dark);
   color: var(--white);
   padding: 0.65rem 1rem;

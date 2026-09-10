@@ -23,7 +23,7 @@ const DEFAULT_PRODUCTS = [
     price: 5000,
     unit: 'botol',
     stock: 120,
-    image: null,
+    image: '',
     description: 'Air mineral alami segar dan higienis dari mata air pegunungan terpilih.'
   },
   {
@@ -33,7 +33,7 @@ const DEFAULT_PRODUCTS = [
     price: 18000,
     unit: 'cup',
     stock: 45,
-    image: null,
+    image: '',
     description: 'Seduhan teh hitam premium berpadu dengan susu kental manis lembut dan es segar.'
   },
   {
@@ -43,7 +43,7 @@ const DEFAULT_PRODUCTS = [
     price: 24000,
     unit: 'botol',
     stock: 30,
-    image: null,
+    image: '',
     description: 'Kopi cold brew seduh dingin 16 jam dengan biji kopi Arabika murni rendah asam.'
   },
   {
@@ -53,7 +53,7 @@ const DEFAULT_PRODUCTS = [
     price: 16500,
     unit: 'bungkus',
     stock: 60,
-    image: null,
+    image: '',
     description: 'Keripik kentang renyah bergelombang dengan bumbu tabur barbeque gurih lezat.'
   },
   {
@@ -61,9 +61,9 @@ const DEFAULT_PRODUCTS = [
     name: 'Roti Croissant Mentega Gurih',
     category: 'camilan',
     price: 15000,
-    unit: 'buah',
+    unit: 'item',
     stock: 25,
-    image: null,
+    image: '',
     description: 'Pastry khas Prancis berlapis renyah dengan aroma mentega murni panggang hangat.'
   },
   {
@@ -73,7 +73,7 @@ const DEFAULT_PRODUCTS = [
     price: 12000,
     unit: 'keping',
     stock: 40,
-    image: null,
+    image: '',
     description: 'Kukis lembut lumer (soft-baked) dengan limpahan choco chips cokelat Belgia.'
   },
   {
@@ -83,7 +83,7 @@ const DEFAULT_PRODUCTS = [
     price: 28000,
     unit: 'paket',
     stock: 18,
-    image: null,
+    image: '',
     description: 'Apel Fuji manis renyah kaya vitamin dan serat, disajikan segar pilihan terbaik.'
   },
   {
@@ -93,7 +93,7 @@ const DEFAULT_PRODUCTS = [
     price: 22000,
     unit: 'kg',
     stock: 20,
-    image: null,
+    image: '',
     description: 'Pisang Cavendish kuning matang alami berkulit mulus dan bertekstur legit.'
   },
   {
@@ -103,7 +103,7 @@ const DEFAULT_PRODUCTS = [
     price: 26000,
     unit: 'karton',
     stock: 35,
-    image: null,
+    image: '',
     description: '100% susu segar murni pasteurisasi kaya kalsium untuk daya tahan tubuh keluarga.'
   },
   {
@@ -113,7 +113,7 @@ const DEFAULT_PRODUCTS = [
     price: 32000,
     unit: 'kotak',
     stock: 22,
-    image: null,
+    image: '',
     description: 'Telur segar peternakan bebas antibiotik dengan kandungan nutrisi Omega-3 tinggi.'
   },
   {
@@ -123,7 +123,7 @@ const DEFAULT_PRODUCTS = [
     price: 45000,
     unit: 'botol',
     stock: 15,
-    image: null,
+    image: '',
     description: 'Sabun cair pelembap kulit dengan ekstrak lidah buaya alami dan Vitamin E lembut.'
   },
   {
@@ -133,7 +133,7 @@ const DEFAULT_PRODUCTS = [
     price: 12500,
     unit: 'botol',
     stock: 50,
-    image: null,
+    image: '',
     description: 'Gel pembersih tangan alkohol 70% efektif membunuh 99.9% kuman tanpa lengket.'
   },
   {
@@ -143,7 +143,7 @@ const DEFAULT_PRODUCTS = [
     price: 27500,
     unit: 'botol',
     stock: 19,
-    image: null,
+    image: '',
     description: 'Cairan pembersih lantai dan meja anti-lemak beraroma jeruk nipis menyegarkan.'
   },
   {
@@ -153,7 +153,7 @@ const DEFAULT_PRODUCTS = [
     price: 14000,
     unit: 'kotak',
     stock: 40,
-    image: null,
+    image: '',
     description: 'Tisu wajah lembut 3-ply dari serat alami murni yang higienis dan tidak mudah robek.'
   }
 ];
@@ -179,7 +179,7 @@ const DEFAULT_ORDERS = [
       notes: 'Tolong roti croissant dipisah bungkusnya ya'
     },
     items: [
-      { id: 'prod-5', name: 'Roti Croissant Mentega Gurih', price: 15000, unit: 'buah', quantity: 2, notes: '' },
+      { id: 'prod-5', name: 'Roti Croissant Mentega Gurih', price: 15000, unit: 'item', quantity: 2, notes: '' },
       { id: 'prod-3', name: 'Kopi Cold Brew Arabika 250ml', price: 24000, unit: 'botol', quantity: 1, notes: 'Dingin' }
     ],
     totalCount: 3,
@@ -230,6 +230,8 @@ const STORAGE_KEYS = {
   ORDERS: 'rama_customer_orders_v1'
 };
 
+const AUTHORIZATION = 'admin';
+
 const Store = {
   ORDER_STATUSES,
 
@@ -254,66 +256,54 @@ const Store = {
   async uploadImage(file) {
     if (!file) return null;
 
-    return new Promise((resolve, reject) => {
-      if (!file.type.startsWith('image/')) {
-        return reject(new Error('File yang diunggah harus berupa gambar (JPG, PNG, WebP).'));
-      }
-
-      if (file.size > 3 * 1024 * 1024) {
-        return reject(new Error('Ukuran gambar maksimal 3MB.'));
-      }
-
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const base64Data = event.target.result;
-        const imageId = 'img-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
-
-        const imageRecord = {
-          id: imageId,
-          filename: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          url: base64Data, // In production, this will be a CDN URL
-          createdAt: new Date().toISOString()
-        };
-
-        await this.saveImageToDb(imageRecord);
-        // TODO: Simpan metadata gambar ke Database Backend: POST /api/media/images
-        resolve(imageRecord);
-      };
-
-      reader.onerror = (error) => reject(error);
-      reader.readAsDataURL(file);
-    });
-  },
-
-  async saveImageToDb(imageRecord) {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEYS.IMAGE_DB);
-      const db = raw ? JSON.parse(raw) : [];
-      db.unshift(imageRecord);
-      if (db.length > 50) db.pop();
-      localStorage.setItem(STORAGE_KEYS.IMAGE_DB, JSON.stringify(db));
-      return imageRecord;
-    } catch (e) {
-      console.warn('Image Database localStorage limit reached:', e);
-      return imageRecord;
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File yang diunggah harus berupa gambar (JPG, PNG, WebP).');
     }
+
+    if (file.size > 3 * 1024 * 1024) {
+      throw new Error('Ukuran gambar maksimal 3MB.');
+    }
+
+    const response = await fetch('/api/auth/image', {
+      headers: { Authorization: `Bearer: ${AUTHORIZATION}` },
+      method: 'POST',
+      body: file,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gagal mengunggah gambar: HTTP ${response.status}`);
+    }
+
+    return await response.json();
   },
 
-  async getAllImagesFromDb() {
-    const raw = localStorage.getItem(STORAGE_KEYS.IMAGE_DB);
-    return raw ? JSON.parse(raw) : [];
-  },
+  // async saveImageToDb(imageRecord) {
+  //   try {
+  //     const raw = localStorage.getItem(STORAGE_KEYS.IMAGE_DB);
+  //     const db = raw ? JSON.parse(raw) : [];
+  //     db.unshift(imageRecord);
+  //     if (db.length > 50) db.pop();
+  //     localStorage.setItem(STORAGE_KEYS.IMAGE_DB, JSON.stringify(db));
+  //     return imageRecord;
+  //   } catch (e) {
+  //     console.warn('Image Database localStorage limit reached:', e);
+  //     return imageRecord;
+  //   }
+  // },
 
-  async deleteImageFromDb(imageId) {
-    const raw = localStorage.getItem(STORAGE_KEYS.IMAGE_DB);
-    if (!raw) return true;
-    let db = JSON.parse(raw);
-    db = db.filter(img => img.id !== imageId);
-    localStorage.setItem(STORAGE_KEYS.IMAGE_DB, JSON.stringify(db));
-    return true;
-  },
+  // async getAllImagesFromDb() {
+  //   const raw = localStorage.getItem(STORAGE_KEYS.IMAGE_DB);
+  //   return raw ? JSON.parse(raw) : [];
+  // },
+
+  // async deleteImageFromDb(imageId) {
+  //   const raw = localStorage.getItem(STORAGE_KEYS.IMAGE_DB);
+  //   if (!raw) return true;
+  //   let db = JSON.parse(raw);
+  //   db = db.filter(img => img.id !== imageId);
+  //   localStorage.setItem(STORAGE_KEYS.IMAGE_DB, JSON.stringify(db));
+  //   return true;
+  // },
 
   /**
    * =========================================================================
@@ -322,29 +312,33 @@ const Store = {
    */
 
   async getCategories() {
-    const data = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-    if (data) {
-      try {
-        return JSON.parse(data);
-      } catch (e) {
-        console.error('Gagal memuat kategori dari penyimpanan:', e);
-      }
+    const response = await fetch("/api/categories");
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(DEFAULT_CATEGORIES));
-    return DEFAULT_CATEGORIES;
+
+    const categories = await response.json();
+
+    localStorage.setItem(
+      STORAGE_KEYS.CATEGORIES,
+      JSON.stringify(categories)
+    );
+
+    return categories;
   },
 
   async getProducts() {
-    const data = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    if (data) {
-      try {
-        return JSON.parse(data);
-      } catch (e) {
-        console.error('Gagal memuat produk dari penyimpanan:', e);
-      }
+    const response = await fetch('/api/products');
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS));
-    return DEFAULT_PRODUCTS;
+
+    const products = await response.json();
+
+    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+    return products;
   },
 
   async saveProducts(products) {
@@ -352,41 +346,30 @@ const Store = {
     return products;
   },
 
-  async addProduct(productData) {
+  async patchProduct(p) {
     const products = await this.getProducts();
     const newProduct = {
-      id: 'prod-' + Date.now(),
-      name: productData.name.trim(),
-      category: productData.category,
-      price: parseFloat(productData.price) || 0,
-      unit: productData.unit ? productData.unit.trim() : 'buah',
-      stock: parseInt(productData.stock, 10) || 0,
-      image: productData.image || null,
-      description: productData.description ? productData.description.trim() : ''
+      id: p.id.trim(),
+      name: p.name.trim(),
+      barcode: p.barcode.trim(),
+      category: p.category,
+      price: parseInt(p.price) || 0,
+      discount: parseInt(p.discount) || 0,
+      salePrice: parseInt(p.salePrice) || 0,
+      unit: p.unit ? p.unit.trim() : 'item',
+      image: p.image || '',
+      description: p.description ? p.description.trim() : ''
     };
-    products.unshift(newProduct);
+
+    const index = products.findIndex(product => product.id === newProduct.id);
+
+    if (index !== -1) {
+      products[index] = newProduct;
+    } else {
+      products.push(newProduct);
+    }
     await this.saveProducts(products);
     return newProduct;
-  },
-
-  async updateProduct(id, productData) {
-    const products = await this.getProducts();
-    const index = products.findIndex(p => p.id === id);
-    if (index !== -1) {
-      products[index] = {
-        ...products[index],
-        name: productData.name.trim(),
-        category: productData.category,
-        price: parseFloat(productData.price) || 0,
-        unit: productData.unit ? productData.unit.trim() : 'buah',
-        stock: parseInt(productData.stock, 10) || 0,
-        image: productData.image !== undefined ? productData.image : products[index].image,
-        description: productData.description ? productData.description.trim() : ''
-      };
-      await this.saveProducts(products);
-      return products[index];
-    }
-    throw new Error('Produk tidak ditemukan');
   },
 
   async deleteProduct(id) {
@@ -414,16 +397,37 @@ const Store = {
    * TODO: Ganti dengan Backend API: GET /api/orders
    */
   async getOrders() {
-    const data = localStorage.getItem(STORAGE_KEYS.ORDERS);
-    if (data) {
-      try {
-        return JSON.parse(data);
-      } catch (e) {
-        console.error('Gagal memuat pesanan dari penyimpanan:', e);
+    try {
+      const response = await fetch('/api/auth/orders', {
+        headers: { Authorization: `Bearer: ${AUTHORIZATION}` },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
+
+      const orders = await response.json();
+
+      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+      return orders;
+    } catch (e) {
+      console.error('Gagal memuat pesanan dari API:', e);
+
+      const data = localStorage.getItem(STORAGE_KEYS.ORDERS);
+      if (data) {
+        try {
+          return JSON.parse(data);
+        } catch (e) {
+          console.error('Gagal memuat pesanan dari penyimpanan:', e);
+        }
+      }
+
+      localStorage.setItem(
+        STORAGE_KEYS.ORDERS,
+        JSON.stringify(DEFAULT_ORDERS)
+      );
+      return DEFAULT_ORDERS;
     }
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(DEFAULT_ORDERS));
-    return DEFAULT_ORDERS;
   },
 
   /**
@@ -455,19 +459,18 @@ const Store = {
    * @param {Array} cart - Daftar item keranjang
    * @param {string} customOrderId - ID unik pesanan (RAMA-XXXXX)
    */
-  async createOrder(customerInfo = {}, cart = null, customOrderId = null) {
+  async createOrder(customerInfo = {}, cart = null) {
     const currentCart = cart || this.getCart();
     if (!currentCart || currentCart.length === 0) return null;
 
     const { totalCount, totalPrice } = this.getCartTotal(currentCart);
-    const orderId = customOrderId || 'RAMA-' + Math.floor(10000 + Math.random() * 90000);
 
     const newOrder = {
-      id: orderId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: 'received', // received | preparing | delivering | completed
       customer: {
+        id: customerInfo.member ? customerInfo.member.trim() : '',
         name: customerInfo.name ? customerInfo.name.trim() : 'Pelanggan Rama',
         phone: customerInfo.phone ? customerInfo.phone.trim() : '',
         address: customerInfo.address ? customerInfo.address.trim() : '',
@@ -477,7 +480,7 @@ const Store = {
         id: item.id,
         name: item.name,
         price: item.price,
-        unit: item.unit || 'buah',
+        unit: item.unit || 'item',
         quantity: item.quantity,
         notes: item.notes || ''
       })),
@@ -485,22 +488,28 @@ const Store = {
       totalPrice
     };
 
-    const orders = await this.getOrders();
-    // Jika pesanan dengan ID yang sama sudah ada (misal re-copy), perbarui
-    const existingIndex = orders.findIndex(o => o.id === orderId);
-    if (existingIndex > -1) {
-      orders[existingIndex] = newOrder;
-    } else {
-      orders.unshift(newOrder);
-    }
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newOrder)
+      });
 
-    await this.saveOrders(orders);
-    return newOrder;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (e) {
+      console.error('Gagal membuat pesanan melalui API:', e);
+    }
   },
 
   /**
    * Memperbarui status pesanan (received, preparing, delivering, completed)
-   * TODO: Ganti dengan Backend API: PATCH /api/orders/:id/status
+   * TODO: Ganti dengan Backend API: PATCH /api/orders/status?id={id}
    */
   async updateOrderStatus(orderId, newStatus) {
     const orders = await this.getOrders();
@@ -512,6 +521,27 @@ const Store = {
       return orders[index];
     }
     throw new Error('Pesanan tidak ditemukan');
+  },
+
+  async updateOrderStatus(orderId, newStatus) {
+    const response = await fetch(
+      `/api/auth/orders/status?id=${encodeURIComponent(orderId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    return await response.json();
   },
 
   /**
@@ -545,10 +575,47 @@ const Store = {
     window.dispatchEvent(new CustomEvent('cart-updated', { detail: { cart } }));
   },
 
+  updateCart(allProducts) {
+    const cart = this.getCart();
+
+    const productsById = new Map(
+      allProducts.map(p => [p.id, p])
+    );
+
+    const updatedCart = cart
+      .filter(cartItem => productsById.has(cartItem.id))
+      .map(cartItem => {
+        const product = productsById.get(cartItem.id);
+
+        const price = Number(product.price) || 0;
+        const discount = Number(product.discount) || 0;
+        const salePrice = Number(product.salePrice) || (
+          discount > 0
+            ? price * (1 - discount / 100)
+            : price
+        );
+
+        return {
+          ...cartItem,
+          price: salePrice
+        };
+      });
+
+    this.saveCart(updatedCart);
+  },
+
   addToCart(product, quantity = 1, notes = '') {
     const cart = this.getCart();
     const cleanNotes = notes ? notes.trim() : '';
     const existingIndex = cart.findIndex(item => item.id === product.id && (item.notes || '') === cleanNotes);
+
+    const price = Number(product.price) || 0;
+    const discount = Number(product.discount) || 0;
+    const salePrice = Number(product.salePrice) || (
+      discount > 0
+        ? price * (1 - discount / 100)
+        : price
+    );
 
     if (existingIndex > -1) {
       cart[existingIndex].quantity += quantity;
@@ -557,9 +624,9 @@ const Store = {
         id: product.id,
         name: product.name,
         category: product.category,
-        price: product.price,
-        unit: product.unit || 'buah',
-        image: product.image || null,
+        price: salePrice,
+        unit: product.unit || 'item',
+        image: product.image || '',
         quantity: quantity,
         notes: cleanNotes
       });
@@ -616,7 +683,7 @@ const Store = {
   /**
    * Membuat template teks pesanan terformat untuk disalin ke WhatsApp (dengan tautan pantau pesanan)
    */
-  formatOrderText(customerInfo = {}, cart = null, orderId = null) {
+  formatOrderText(customerInfo = {}, cart = null) {
     const currentCart = cart || this.getCart();
     const dateStr = new Date().toLocaleString('id-ID', {
       dateStyle: 'full',
@@ -624,11 +691,10 @@ const Store = {
     });
 
     const { totalCount, totalPrice } = this.getCartTotal(currentCart);
-    const activeOrderId = orderId || 'RAMA-XXXXX';
-    const trackingUrl = this.getOrderTrackingUrl(activeOrderId);
+    // const activeOrderId = orderId || 'RAMA-XXXXX';
+    // const trackingUrl = this.getOrderTrackingUrl(activeOrderId);
 
     let text = `🛒 *PESANAN BARU - RAMA STORE*\n`;
-    text += `🆔 *No. Pesanan:* ${activeOrderId}\n`;
     text += `📅 *Waktu Pemesanan:* ${dateStr}\n`;
     text += `------------------------------------\n`;
 
@@ -637,6 +703,7 @@ const Store = {
       text += `👤 *DATA PEMESAN:*\n`;
       if (customerInfo.name) text += `• Nama: *${customerInfo.name.trim()}*\n`;
       if (customerInfo.phone) text += `• No. WhatsApp: ${customerInfo.phone.trim()}\n`;
+      if (customerInfo.member) text += `• No. Member: ${customerInfo.member.trim()}\n`;
       if (customerInfo.address) text += `• Alamat Kirim: ${customerInfo.address.trim()}\n`;
       if (customerInfo.notes) text += `• Catatan Pengiriman: _${customerInfo.notes.trim()}_\n`;
       text += `------------------------------------\n`;
@@ -646,7 +713,7 @@ const Store = {
     currentCart.forEach((item, index) => {
       const subtotal = item.price * item.quantity;
       text += `${index + 1}. *${item.name}*\n`;
-      text += `   ↳ Jumlah: ${item.quantity} ${item.unit || 'buah'} x ${this.formatCurrency(item.price)} = *${this.formatCurrency(subtotal)}*\n`;
+      text += `   ↳ Jumlah: ${item.quantity} ${item.unit || 'item'} x ${this.formatCurrency(item.price)} = *${this.formatCurrency(subtotal)}*\n`;
       if (item.notes) {
         text += `   ↳ _Catatan Khusus: ${item.notes}_\n`;
       }

@@ -1,0 +1,18 @@
+#:schema https://raw.githubusercontent.com/aufam/carton/main/carton-schema.json
+
+[package]
+edition = 20
+name = "rama"
+
+[[bin]]
+name = "main"
+path = "src/main.cpp"
+required-features = ["jwt"]
+
+[dependencies]
+boost = { version = "1.92.0", features = ["url"] }
+brb = { version = "0.1.0" }
+cpx = { version = "0.1.0", features = ["json", "toml", "sqlite", "fmt", "cli"] }
+csv-parser = { version = "5.3.0" }
+xxhash = { version = "0.8.3" }
+jwt = { version = "0.7.2", mod = ["src/features/jwt.cppm"], optional = true }

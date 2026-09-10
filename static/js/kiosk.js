@@ -6,7 +6,7 @@
 
 let allProducts = [];
 let allCategories = [];
-let activeCategoryId = 'all';
+let activeCategoryId = null;
 let searchQuery = '';
 
 // Status sementara saat memilih item di modal detail
@@ -29,6 +29,7 @@ async function loadInitialData() {
   try {
     allCategories = await Store.getCategories();
     allProducts = await Store.getProducts();
+    Store.updateCart(allProducts);
     renderCategories();
     renderProducts();
   } catch (err) {
@@ -89,7 +90,7 @@ function setupEventListeners() {
   }
 
   // Update pratinjau teks saat pengguna mengisi form data pemesan
-  ['cust-name', 'cust-phone', 'cust-address', 'cust-notes'].forEach(id => {
+  ['cust-name', 'cust-phone', 'cust-member', 'cust-address', 'cust-notes'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener('input', updateOrderPreview);
@@ -158,7 +159,7 @@ function renderProducts() {
   let filtered = allProducts;
 
   // Filter berdasarkan kategori
-  if (activeCategoryId !== 'all') {
+  if (activeCategoryId) {
     filtered = filtered.filter(p => p.category === activeCategoryId);
   }
 
@@ -182,33 +183,68 @@ function renderProducts() {
   }
 
   grid.innerHTML = filtered.map(p => {
+    // NOTE: stock is disabled
+    p.stock = 100;
+
     const icon = getCategoryIcon(p.category);
     const isOutOfStock = p.stock <= 0;
     const thumbHtml = p.image
       ? `<img src="${p.image}" alt="${p.name}">`
       : `<i class="fa-solid ${icon}"></i>`;
 
-    // NOTE: stock is disabled
-    return `
-      <div class="product-card" onclick="openProductDetailModal('${p.id}')">
-        <span class="product-stock-tag ${p.stock <= 5 ? 'low' : ''}" hidden>
-          ${p.stock > 0 ? `Sisa ${p.stock}` : 'Habis'}
+    const price = Number(p.price) || 0;
+    const discount = Number(p.discount) || 0;
+
+    // Calculate sale price if it isn't provided
+    const salePrice = Number(p.salePrice) || (
+      discount > 0
+        ? price * (1 - discount / 100)
+        : price
+    );
+
+    const priceHtml = discount > 0
+      ? `
+      <div class="product-price">
+        <span class="product-price-original">
+          ${Store.formatCurrency(price)}
         </span>
-        <div class="product-card-top">
-          <div class="product-icon-wrap">
-            ${thumbHtml}
-          </div>
-          <h4 class="product-name" title="${p.name}">${p.name}</h4>
-          <p class="product-desc">${p.description || 'Pilihan berkualitas Rama Swalayan.'}</p>
-        </div>
-        <div class="product-card-bottom">
-          <div class="product-price">${Store.formatCurrency(p.price)} <span class="product-unit">/${p.unit || 'buah'}</span></div>
-          <button class="btn-add-kiosk" ${isOutOfStock ? 'disabled' : ''} onclick="event.stopPropagation(); ${isOutOfStock ? '' : `quickAddToCart('${p.id}')`}">
-            <i class="fa-solid fa-cart-plus"></i> ${isOutOfStock ? 'Habis' : 'Beli'}
-          </button>
-        </div>
+        <span class="product-discount">
+          -${discount}%
+        </span>
+        <br>
+        <span class="product-price-sale">
+          ${Store.formatCurrency(salePrice)}
+        </span>
+        <span class="product-unit">/${p.unit || 'item'}</span>
+      </div>
+    `
+      : `
+      <div class="product-price">
+        ${Store.formatCurrency(price)}
+        <span class="product-unit">/${p.unit || 'item'}</span>
       </div>
     `;
+
+    return `
+    <div class="product-card" onclick="openProductDetailModal('${p.id}')">
+      <span class="product-stock-tag ${p.stock <= 5 ? 'low' : ''}" hidden>
+        ${p.stock > 0 ? `Sisa ${p.stock}` : 'Habis'}
+      </span>
+      <div class="product-card-top">
+        <div class="product-icon-wrap">
+          ${thumbHtml}
+        </div>
+        <h4 class="product-name" title="${p.name}">${p.name}</h4>
+        <p class="product-desc">${p.description || 'Pilihan berkualitas Rama Swalayan.'}</p>
+      </div>
+      <div class="product-card-bottom">
+        ${priceHtml}
+        <button class="btn-add-kiosk" ${isOutOfStock ? 'disabled' : ''} onclick="event.stopPropagation(); ${isOutOfStock ? '' : `quickAddToCart('${p.id}')`}">
+          <i class="fa-solid fa-cart-plus"></i> ${isOutOfStock ? 'Habis' : 'Beli'}
+        </button>
+      </div>
+    </div>
+  `;
   }).join('');
 }
 
@@ -230,7 +266,7 @@ function openProductDetailModal(productId) {
 
   document.getElementById('modal-item-title').textContent = product.name;
   document.getElementById('modal-item-desc').textContent = product.description || 'Produk segar dan berkualitas Rama Swalayan.';
-  document.getElementById('modal-item-price').textContent = `${Store.formatCurrency(product.price)} / ${product.unit || 'buah'}`;
+  document.getElementById('modal-item-price').textContent = `${Store.formatCurrency(product.price)} / ${product.unit || 'item'}`;
 
   const modalIcon = document.getElementById('modal-item-icon');
   const modalImg = document.getElementById('modal-item-img');
@@ -289,7 +325,7 @@ function renderCartUI() {
         <div class="cart-item-row">
           <div class="cart-item-info">
             <div class="cart-item-title">${item.name}</div>
-            <div class="cart-item-sub">${Store.formatCurrency(item.price)} / ${item.unit || 'buah'}</div>
+            <div class="cart-item-sub">${Store.formatCurrency(item.price)} / ${item.unit || 'item'}</div>
             ${item.notes ? `<div class="cart-item-note"><i class="fa-regular fa-comment-dots"></i> ${item.notes}</div>` : ''}
           </div>
           <div class="cart-qty-controls">
@@ -325,8 +361,6 @@ function openCartModal() {
   if (modal) modal.classList.add('active');
 }
 
-let currentCheckoutOrderId = null;
-
 function openCheckoutModal() {
   const cart = Store.getCart();
   if (cart.length === 0) {
@@ -334,10 +368,6 @@ function openCheckoutModal() {
     return;
   }
   closeAllModals();
-  // Generate ID pesanan unik jika belum ada
-  if (!currentCheckoutOrderId) {
-    currentCheckoutOrderId = 'RAMA-' + Math.floor(10000 + Math.random() * 90000);
-  }
 
   // Hide tracking link container on modal open
   const trackingContainer = document.getElementById('tracking-link-container');
@@ -352,6 +382,7 @@ function getCustomerFormData() {
   return {
     name: document.getElementById('cust-name')?.value || '',
     phone: document.getElementById('cust-phone')?.value || '',
+    member: document.getElementById('cust-member')?.value || '',
     address: document.getElementById('cust-address')?.value || '',
     notes: document.getElementById('cust-notes')?.value || ''
   };
@@ -361,12 +392,8 @@ function updateOrderPreview() {
   const previewBox = document.getElementById('order-text-preview');
   if (!previewBox) return;
 
-  if (!currentCheckoutOrderId) {
-    currentCheckoutOrderId = 'RAMA-' + Math.floor(10000 + Math.random() * 90000);
-  }
-
   const customerInfo = getCustomerFormData();
-  const orderText = Store.formatOrderText(customerInfo, null, currentCheckoutOrderId);
+  const orderText = Store.formatOrderText(customerInfo, null);
   previewBox.textContent = orderText;
 }
 
@@ -386,19 +413,16 @@ async function handleSendWhatsAppOrder(e) {
     return;
   }
 
-  if (!currentCheckoutOrderId) {
-    currentCheckoutOrderId = 'RAMA-' + Math.floor(10000 + Math.random() * 90000);
-  }
+  const order = await Store.createOrder(customerInfo, cart);
 
-  // Simpan pesanan ke database order dummy
-  await Store.createOrder(customerInfo, cart, currentCheckoutOrderId);
+  const orderText = Store.formatOrderText(customerInfo, cart);
+  orderText += `*No. Pesanan:* ${order.id}\n\n`;
 
-  const orderText = Store.formatOrderText(customerInfo, cart, currentCheckoutOrderId);
   const waAdminPhone = '6285327961606';
   const waUrl = Store.getWhatsAppSendUrl(waAdminPhone, orderText);
 
   // Tampilkan tautan pantau pesanan
-  const trackingUrl = Store.getOrderTrackingUrl(currentCheckoutOrderId);
+  const trackingUrl = Store.getOrderTrackingUrl(order.id);
   const trackingContainer = document.getElementById('tracking-link-container');
   const trackingLink = document.getElementById('tracking-url-link');
 
@@ -435,9 +459,13 @@ function showToast(message, type = 'info') {
   toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-info'}"></i> <span>${message}</span>`;
   container.appendChild(toast);
 
-  setTimeout(() => toast.classList.add('show'), 10);
-  setTimeout(() => {
+  const dismiss = () => {
     toast.classList.remove('show');
     setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  };
+
+  toast.addEventListener('click', dismiss);
+
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(dismiss, 3000);
 }

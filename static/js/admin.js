@@ -350,7 +350,7 @@ function renderTable() {
       stockBadge = `<span class="stock-status low-stock">Menipis (${p.stock} ${p.unit})</span>`;
     }
 
-    const thumbHtml = p.image 
+    const thumbHtml = p.image
       ? `<img src="${p.image}" alt="${p.name}">`
       : `<i class="fa-solid ${catIcon}"></i>`;
 
@@ -602,21 +602,20 @@ async function handleProductFormSubmit(e) {
   e.preventDefault();
 
   const productData = {
+    id: document.getElementById('prod-id').value,
     name: document.getElementById('prod-name').value,
+    barcode: document.getElementById('prod-barcode').value,
     category: document.getElementById('prod-category').value,
     price: document.getElementById('prod-price').value,
+    discount: document.getElementById('prod-discount').value,
+    salePrice: document.getElementById('prod-sale-price').value,
     unit: document.getElementById('prod-unit').value,
-    stock: document.getElementById('prod-stock').value,
     image: document.getElementById('prod-image-data').value || null,
     description: document.getElementById('prod-desc').value
   };
 
   try {
-    if (editingProductId) {
-      await Store.updateProduct(editingProductId, productData);
-    } else {
-      await Store.addProduct(productData);
-    }
+    await Store.patchProduct(productData);
 
     closeAllModals();
     await loadAdminData();

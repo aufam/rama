@@ -82,7 +82,7 @@
           <span class="admin-topbar-title" id="admin-view-title-mobile">Kelola Produk</span>
         </div>
         <div class="admin-topbar-actions">
-          <button class="btn-admin-secondary btn-icon-only" id="btn-reset-demo-mobile" title="Reset Demo">
+          <button class="btn-admin-secondary btn-icon-only" id="btn-reset-demo-mobile" title="Reset Demo" hidden>
             <i class="fa-solid fa-rotate-left"></i>
           </button>
           <button class="btn-admin-primary btn-icon-only" id="btn-add-product-mobile">
@@ -98,7 +98,7 @@
           <p id="admin-view-subtitle">Kelola daftar barang, satuan, harga jual, dan sisa stok toko Rama.</p>
         </div>
         <div class="admin-header-actions">
-          <button class="btn-admin-secondary" id="btn-reset-demo" title="Kembalikan data contoh awal">
+          <button class="btn-admin-secondary" id="btn-reset-demo" title="Kembalikan data contoh awal" hidden>
             <i class="fa-solid fa-rotate-left"></i>
             <span>Reset Demo</span>
           </button>
@@ -319,8 +319,18 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label" for="prod-id">Kode Produk *</label>
+            <input type="tel" id="prod-id" class="form-control" required>
+          </div>
+
+          <div class="form-group">
             <label class="form-label" for="prod-name">Nama Produk *</label>
             <input type="text" id="prod-name" class="form-control" placeholder="Contoh: Susu Sapi Murni 1L" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="prod-barcode">Barcode *</label>
+            <input type="tel" id="prod-barcode" class="form-control" required>
           </div>
 
           <div class="form-group">
@@ -341,9 +351,15 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="prod-stock">Jumlah Stok Awal *</label>
-            <input type="number" id="prod-stock" class="form-control" placeholder="50" min="0" required>
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label class="form-label" for="prod-sale-price">Harga Setelah diskon (Rp) *</label>
+              <input type="number" id="prod-sale-price" class="form-control" placeholder="25000" min="0" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="prod-discount">Diskon *</label>
+              <input type="number" id="prod-discount" class="form-control" placeholder="10" min="0" max="100" required>
+            </div>
           </div>
 
           <div class="form-group">
