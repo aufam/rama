@@ -11,7 +11,10 @@ import rama.error;
 void rama::App::add_order(Order &o) {
     std::lock_guard<std::mutex> lock(mtx);
 
+    bool is_new = false;
     if (o.id.empty()) {
+        is_new = true;
+
         timespec ts;
         clock_gettime(CLOCK_REALTIME, &ts);
 
@@ -127,6 +130,9 @@ returning orders.id
     if (row.is_done()) {
         throw Error{"already exists", 409};
     }
+
+    if (!is_new)
+        return;
 
     for (auto &item : o.items) {
         static constexpr database::OrderItem order_items;

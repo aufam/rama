@@ -193,7 +193,7 @@ function setupAdminListeners() {
 
   // Listener jika ada update pesanan dari tab lain
   window.addEventListener('orders-updated', async () => {
-    adminOrders = await Store.getOrders();
+    adminOrders = await Store.getOrders(true);
     renderStats();
     renderOrdersTable();
     updateOrdersBadge();
@@ -542,7 +542,7 @@ function renderOrdersTable() {
 window.handleUpdateOrderStatus = async function(orderId, newStatus) {
   try {
     await Store.updateOrderStatus(orderId, newStatus);
-    adminOrders = await Store.getOrders();
+    adminOrders = await Store.getOrders(true);
     renderStats();
     renderOrdersTable();
     updateOrdersBadge();
@@ -556,7 +556,7 @@ window.handleDeleteOrder = async function(orderId) {
   if (confirm(`Hapus data pesanan ${orderId}?`)) {
     try {
       await Store.deleteOrder(orderId);
-      adminOrders = await Store.getOrders();
+      adminOrders = await Store.getOrders(true);
       renderStats();
       renderOrdersTable();
       updateOrdersBadge();
@@ -566,8 +566,8 @@ window.handleDeleteOrder = async function(orderId) {
   }
 };
 
-window.openOrderDetailModal = function(orderId) {
-  const order = adminOrders.find(o => o.id.toUpperCase() === orderId.toUpperCase());
+window.openOrderDetailModal = async function(orderId) {
+  const order = await Store.getOrderById(orderId);
   if (!order) return;
 
   const contentEl = document.getElementById('modal-order-content');
