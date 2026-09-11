@@ -26,7 +26,7 @@ struct rama::database::Product {
     Column<Product, long long>        price       = "price integer not null";
     Column<Product, long long>        discount    = "discount integer not null";
     Column<Product, long long>        sale_price  = "sale_price integer not null";
-    Column<Product, std::string_view> category_id = "category_id text references categories(id)";
+    Column<Product, std::string_view> category_id = "category_id text not null";
     Column<Product, std::string_view> unit        = "unit text not null default 'buah'";
     Column<Product, std::string_view> image       = "image text not null default ''";
 };
@@ -60,8 +60,8 @@ struct rama::database::OrderItem {
     static constexpr const char *TableName = "order_items";
 
     Column<OrderItem, long long>        id         = "id integer primary key";
-    Column<OrderItem, std::string_view> order_id   = "order_id text not null references orders(id)";
-    Column<OrderItem, std::string_view> product_id = "product_id text not null references products(id)";
+    Column<OrderItem, std::string_view> order_id   = "order_id text not null references orders(id) on delete cascade";
+    Column<OrderItem, std::string_view> product_id = "product_id text not null";
     Column<OrderItem, std::string_view> name       = "name text not null";
     Column<OrderItem, long long>        price      = "price integer not null";
     Column<OrderItem, std::string_view> unit       = "unit text not null";

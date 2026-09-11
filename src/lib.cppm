@@ -2,6 +2,7 @@ module;
 
 #include <string>
 #include <vector>
+#include <optional>
 #include <mutex>
 
 export module rama;
@@ -18,13 +19,11 @@ export namespace rama {
 }
 
 struct rama::App {
-    brb::Router             &router;
     cpx::sqlite3::Connection db;
     std::mutex               mtx;
 
-    App(brb::Router &router, const std::string &db)
-        : router(router)
-        , db(db) {}
+    explicit App(const std::string &db)
+        : db(db) {}
 
     void create_tables();
     void load_products_csv(const std::string &csv_path);
@@ -32,10 +31,14 @@ struct rama::App {
 
     std::vector<Product> get_products();
     void                 add_product(const Product &);
+    void                 delete_product(const std::string &id);
 
     std::vector<Category> get_categories();
-    // void                  add_category(const Category &);
+    void                  add_category(const Category &);
+    void                  delete_category(const std::string &id);
 
-    std::vector<Order> get_orders();
-    void               add_order(Order &);
+    std::vector<Order>   get_orders();
+    std::optional<Order> get_order(const std::string &id);
+    void                 add_order(Order &);
+    void                 delete_order(const std::string &id);
 };

@@ -779,6 +779,19 @@ body {
   overflow-y: auto;
 }
 
+#product-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+#product-form .modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /* Cart Items in Drawer */
 .cart-item-list {
   display: flex;

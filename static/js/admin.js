@@ -13,6 +13,47 @@ let editingProductId = null;
 let currentUploadedImageData = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
+  Store.loadToken();
+
+  Store.onUnauthorized = function() {
+    return new Promise((resolve, reject) => {
+      const modal = document.getElementById('modal-login');
+      const form = document.getElementById('login-form');
+
+      modal.classList.add('active');
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+
+        const data = new FormData(form);
+
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: data.get('username'),
+              password: data.get('password'),
+            }),
+          });
+
+          if (!res.ok) {
+            throw new Error('Login failed');
+          }
+
+          const result = await res.json();
+          Store.saveToken(result.token);
+
+          modal.classList.remove('active');
+          resolve();
+        } catch (err) {
+          console.error('Login failed:', err);
+          alert('Username atau password salah.');
+        }
+      };
+    });
+  }
+
   await loadAdminData();
   setupAdminListeners();
   setupImageUploadHandlers();
@@ -157,6 +198,22 @@ function setupAdminListeners() {
     renderOrdersTable();
     updateOrdersBadge();
   });
+
+  const priceInput = document.getElementById('prod-price');
+  const discountInput = document.getElementById('prod-discount');
+  const salePriceInput = document.getElementById('prod-sale-price');
+
+  function calculateSalePrice() {
+    const price = Number(priceInput.value) || 0;
+    const discount = Number(discountInput.value) || 0;
+
+    const salePrice = price * (1 - discount / 100);
+
+    salePriceInput.value = Math.round(salePrice);
+  }
+
+  priceInput.addEventListener('input', calculateSalePrice);
+  discountInput.addEventListener('input', calculateSalePrice);
 }
 
 /**
@@ -303,20 +360,11 @@ function renderTable() {
 
   const search = (document.getElementById('admin-search-input')?.value || '').toLowerCase().trim();
   const cat = document.getElementById('admin-cat-filter')?.value || 'all';
-  const stock = document.getElementById('admin-stock-filter')?.value || 'all';
 
   let filtered = adminProducts;
 
   if (cat !== 'all') {
     filtered = filtered.filter(p => p.category === cat);
-  }
-
-  if (stock === 'in-stock') {
-    filtered = filtered.filter(p => p.stock > 5);
-  } else if (stock === 'low-stock') {
-    filtered = filtered.filter(p => p.stock > 0 && p.stock <= 5);
-  } else if (stock === 'out-stock') {
-    filtered = filtered.filter(p => p.stock <= 0);
   }
 
   if (search) {
@@ -329,7 +377,7 @@ function renderTable() {
   if (filtered.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--admin-text-muted);">
+        <td colspan="5" style="text-align: center; padding: 2.5rem; color: var(--admin-text-muted);">
           <i class="fa-solid fa-box-open" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
           Tidak ada produk yang cocok dengan pencarian atau filter yang dipilih.
         </td>
@@ -343,16 +391,29 @@ function renderTable() {
     const catName = catObj ? catObj.name : p.category;
     const catIcon = catObj ? catObj.icon : 'fa-box';
 
-    let stockBadge = `<span class="stock-status in-stock">${p.stock} ${p.unit}</span>`;
-    if (p.stock <= 0) {
-      stockBadge = `<span class="stock-status out-stock">Habis (0)</span>`;
-    } else if (p.stock <= 5) {
-      stockBadge = `<span class="stock-status low-stock">Menipis (${p.stock} ${p.unit})</span>`;
-    }
-
     const thumbHtml = p.image
       ? `<img src="${p.image}" alt="${p.name}">`
       : `<i class="fa-solid ${catIcon}"></i>`;
+
+    const discount = Number(p.discount || 0);
+
+    const priceHtml = discount === 0
+      ? `<strong>${Store.formatCurrency(p.price)}</strong> / ${p.unit || 'item'}`
+      : `
+      <div>
+        <div>
+          <span style="text-decoration: line-through; color: var(--admin-text-muted);">
+            ${Store.formatCurrency(p.price)}
+          </span>
+          <span style="margin-left: 0.4rem; color: var(--admin-text-muted);">
+            -${discount}%
+          </span>
+        </div>
+        <div>
+          <strong>${Store.formatCurrency(p.sale_price)}</strong> / ${p.unit || 'item'}
+        </div>
+      </div>
+    `;
 
     return `
       <tr>
@@ -370,8 +431,7 @@ function renderTable() {
         <td>
           <span class="category-badge">${catName}</span>
         </td>
-        <td><strong>${Store.formatCurrency(p.price)}</strong> / ${p.unit}</td>
-        <td>${stockBadge}</td>
+        <td>${priceHtml}</td>
         <td><code>${p.id}</code></td>
         <td>
           <div class="table-actions">
@@ -581,11 +641,14 @@ window.openEditProductModal = function(productId) {
 
   editingProductId = productId;
   document.getElementById('modal-form-title').textContent = 'Edit Produk';
+  document.getElementById('prod-id').value = product.id;
   document.getElementById('prod-name').value = product.name;
+  document.getElementById('prod-barcode').value = product.barcode;
   document.getElementById('prod-category').value = product.category;
   document.getElementById('prod-price').value = product.price;
   document.getElementById('prod-unit').value = product.unit;
-  document.getElementById('prod-stock').value = product.stock;
+  document.getElementById('prod-discount').value = product.discount;
+  document.getElementById('prod-sale-price').value = product.salePrice;
   document.getElementById('prod-desc').value = product.description || '';
 
   if (product.image) {

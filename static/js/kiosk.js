@@ -373,6 +373,9 @@ function openCheckoutModal() {
   const trackingContainer = document.getElementById('tracking-link-container');
   if (trackingContainer) trackingContainer.style.display = 'none';
 
+  const notTrackingContainer = document.getElementById('not-tracking-link-container');
+  if (notTrackingContainer) notTrackingContainer.style.display = 'block';
+
   updateOrderPreview();
   const modal = document.getElementById('modal-checkout');
   if (modal) modal.classList.add('active');
@@ -413,13 +416,18 @@ async function handleSendWhatsAppOrder(e) {
     return;
   }
 
-  const order = await Store.createOrder(customerInfo, cart);
+  let order;
+  try {
+    order = await Store.createOrder(customerInfo, cart);
+  } catch (err) {
+    showToast(err, 'error');
+    return;
+  }
 
   const orderText = Store.formatOrderText(customerInfo, cart);
-  orderText += `*No. Pesanan:* ${order.id}\n\n`;
+  const orderTextWithId = `*No. Pesanan:* ${order.id}\n\n` + orderText;
 
-  const waAdminPhone = '6285327961606';
-  const waUrl = Store.getWhatsAppSendUrl(waAdminPhone, orderText);
+  const waUrl = Store.getWhatsAppSendUrl(Store.ADMIN_WA, orderTextWithId);
 
   // Tampilkan tautan pantau pesanan
   const trackingUrl = Store.getOrderTrackingUrl(order.id);
@@ -427,6 +435,9 @@ async function handleSendWhatsAppOrder(e) {
   const trackingLink = document.getElementById('tracking-url-link');
 
   if (trackingContainer && trackingLink) {
+    const notTrackingContainer = document.getElementById('not-tracking-link-container');
+    if (notTrackingContainer) notTrackingContainer.style.display = 'none';
+
     trackingLink.href = trackingUrl;
     trackingContainer.style.display = 'block';
     trackingContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

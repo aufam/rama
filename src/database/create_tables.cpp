@@ -3,6 +3,7 @@ module;
 #include <string>
 
 module rama;
+import cpx.sql;
 
 void rama::App::create_tables() {
     using cpx::sql::create_table_if_not_exists;
@@ -10,6 +11,9 @@ void rama::App::create_tables() {
     static constexpr rama::database::Order     orders;
     static constexpr rama::database::OrderItem order_items;
     static constexpr rama::database::Product   products;
+
+    cpx::sql::Statement<> foreign_keys{"PRAGMA foreign_keys = ON"};
+    db(foreign_keys);
 
     db(create_table_if_not_exists<products>(
         products.id, //

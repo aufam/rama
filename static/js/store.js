@@ -5,6 +5,8 @@
  * Dilengkapi dengan penanda komentar TODO untuk integrasi API/Database backend masa depan.
  */
 
+const ADMIN_WA = '6285327961606';
+
 const DEFAULT_CATEGORIES = [
   { id: 'all', name: 'Semua Produk', icon: 'fa-layer-group' },
   { id: 'minuman', name: 'Minuman Segar', icon: 'fa-mug-hot' },
@@ -227,13 +229,27 @@ const STORAGE_KEYS = {
   CATEGORIES: 'rama_inventory_categories_v3',
   CART: 'rama_customer_cart_v3',
   IMAGE_DB: 'rama_image_database_v1',
-  ORDERS: 'rama_customer_orders_v1'
+  ORDERS: 'rama_customer_orders_v1',
+  AUTH: 'rama_admin_token_v1'
 };
 
-const AUTHORIZATION = 'admin';
+const AUTHORIZATION = null;
 
 const Store = {
+  AUTHORIZATION: null,
+  onUnauthorized: null,
+
+  loadToken() {
+    this.AUTHORIZATION = localStorage.getItem(STORAGE_KEYS.AUTH);
+  },
+
+  saveToken(token) {
+    this.AUTHORIZATION = token;
+    localStorage.setItem(STORAGE_KEYS.AUTH, token);
+  },
+
   ORDER_STATUSES,
+  ADMIN_WA,
 
   // Helper format mata uang Rupiah
   formatCurrency(amount) {
@@ -264,11 +280,16 @@ const Store = {
       throw new Error('Ukuran gambar maksimal 3MB.');
     }
 
-    const response = await fetch('/api/auth/image', {
-      headers: { Authorization: `Bearer: ${AUTHORIZATION}` },
+    const response = await fetch('/api/auth/images', {
+      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}` },
       method: 'POST',
       body: file,
     });
+
+    if (response.status === 401 && this.onUnauthorized) {
+      await this.onUnauthorized();
+      return this.uploadImage(file);
+    }
 
     if (!response.ok) {
       throw new Error(`Gagal mengunggah gambar: HTTP ${response.status}`);
@@ -328,7 +349,12 @@ const Store = {
     return categories;
   },
 
-  async getProducts() {
+  async getProducts(local = false) {
+    if (local) {
+      const raw = localStorage.getItem(STORAGE_KEYS.ORDERS);
+      return raw ? JSON.parse(raw) : [];
+    }
+
     const response = await fetch('/api/products');
 
     if (!response.ok) {
@@ -347,7 +373,7 @@ const Store = {
   },
 
   async patchProduct(p) {
-    const products = await this.getProducts();
+    const products = await this.getProducts(true);
     const newProduct = {
       id: p.id.trim(),
       name: p.name.trim(),
@@ -361,19 +387,50 @@ const Store = {
       description: p.description ? p.description.trim() : ''
     };
 
+    const response = await fetch('/api/auth/products', {
+      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'Content-Type': 'application/json' },
+      method: 'POST',
+      body: JSON.stringify(newProduct),
+    });
+
+    if (response.status === 401 && this.onUnauthorized) {
+      await this.onUnauthorized();
+      return this.patchProduct(p);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
     const index = products.findIndex(product => product.id === newProduct.id);
 
     if (index !== -1) {
       products[index] = newProduct;
     } else {
-      products.push(newProduct);
+      products.unshift(newProduct);
     }
     await this.saveProducts(products);
     return newProduct;
   },
 
   async deleteProduct(id) {
-    let products = await this.getProducts();
+    let products = await this.getProducts(true);
+
+    const response = await fetch('/api/auth/products', {
+      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'Content-Type': 'application/json' },
+      method: 'DELETE',
+      body: JSON.stringify({ id: id }),
+    });
+
+    if (response.status === 401 && this.onUnauthorized) {
+      await this.onUnauthorized();
+      return this.deleteProduct(id);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
     products = products.filter(p => p.id !== id);
     await this.saveProducts(products);
     return true;
@@ -396,38 +453,29 @@ const Store = {
    * Mengambil semua daftar pesanan
    * TODO: Ganti dengan Backend API: GET /api/orders
    */
-  async getOrders() {
-    try {
-      const response = await fetch('/api/auth/orders', {
-        headers: { Authorization: `Bearer: ${AUTHORIZATION}` },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const orders = await response.json();
-
-      localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
-      return orders;
-    } catch (e) {
-      console.error('Gagal memuat pesanan dari API:', e);
-
-      const data = localStorage.getItem(STORAGE_KEYS.ORDERS);
-      if (data) {
-        try {
-          return JSON.parse(data);
-        } catch (e) {
-          console.error('Gagal memuat pesanan dari penyimpanan:', e);
-        }
-      }
-
-      localStorage.setItem(
-        STORAGE_KEYS.ORDERS,
-        JSON.stringify(DEFAULT_ORDERS)
-      );
-      return DEFAULT_ORDERS;
+  async getOrders(local = false) {
+    if (local) {
+      const raw = localStorage.getItem(STORAGE_KEYS.ORDERS);
+      return raw ? JSON.parse(raw) : [];
     }
+
+    const response = await fetch('/api/auth/orders', {
+      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}` },
+    });
+
+    if (response.status === 401 && this.onUnauthorized) {
+      await this.onUnauthorized();
+      return this.getOrders(local);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const orders = await response.json();
+
+    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
+    return orders;
   },
 
   /**
@@ -446,9 +494,14 @@ const Store = {
    */
   async getOrderById(orderId) {
     if (!orderId) return null;
-    const orders = await this.getOrders();
-    const cleanId = orderId.toString().trim().toUpperCase();
-    return orders.find(o => o.id.toUpperCase() === cleanId) || null;
+
+    const response = await fetch(`/api/order?id=${orderId}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    return await response.json();
   },
 
   /**
@@ -488,54 +541,11 @@ const Store = {
       totalPrice
     };
 
-    try {
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newOrder)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (e) {
-      console.error('Gagal membuat pesanan melalui API:', e);
-    }
-  },
-
-  /**
-   * Memperbarui status pesanan (received, preparing, delivering, completed)
-   * TODO: Ganti dengan Backend API: PATCH /api/orders/status?id={id}
-   */
-  async updateOrderStatus(orderId, newStatus) {
-    const orders = await this.getOrders();
-    const index = orders.findIndex(o => o.id.toUpperCase() === orderId.toUpperCase());
-    if (index !== -1) {
-      orders[index].status = newStatus;
-      orders[index].updatedAt = new Date().toISOString();
-      await this.saveOrders(orders);
-      return orders[index];
-    }
-    throw new Error('Pesanan tidak ditemukan');
-  },
-
-  async updateOrderStatus(orderId, newStatus) {
-    const response = await fetch(
-      `/api/auth/orders/status?id=${encodeURIComponent(orderId)}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: newStatus,
-        }),
-      }
-    );
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newOrder)
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -545,11 +555,45 @@ const Store = {
   },
 
   /**
+   * Memperbarui status pesanan (received, preparing, delivering, completed)
+   * TODO: Ganti dengan Backend API: PATCH /api/orders/status?id={id}
+   */
+  async updateOrderStatus(orderId, newStatus) {
+    const order = await this.getOrderById(orderId);
+    order.status = newStatus;
+    order.updatedAt = new Date().toISOString();
+
+    const response = await fetch('/api/auth/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(order)
+    });
+
+    if (response.status === 401 && this.onUnauthorized) {
+      await this.onUnauthorized();
+      return this.updateOrderStatus(orderId, newStatus);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const orders = await this.getOrders(true);
+    const index = orders.findIndex(o => o.id.toUpperCase() === orderId.toUpperCase());
+    if (index !== -1) {
+      orders[index] = order;
+      await this.saveOrders(orders);
+      return orders[index];
+    }
+    throw new Error('Pesanan tidak ditemukan');
+  },
+
+  /**
    * Menghapus pesanan
    * TODO: Ganti dengan Backend API: DELETE /api/orders/:id
    */
   async deleteOrder(orderId) {
-    let orders = await this.getOrders();
+    let orders = await this.getOrders(true);
     orders = orders.filter(o => o.id.toUpperCase() !== orderId.toUpperCase());
     await this.saveOrders(orders);
     return true;

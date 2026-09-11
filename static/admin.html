@@ -82,9 +82,6 @@
           <span class="admin-topbar-title" id="admin-view-title-mobile">Kelola Produk</span>
         </div>
         <div class="admin-topbar-actions">
-          <button class="btn-admin-secondary btn-icon-only" id="btn-reset-demo-mobile" title="Reset Demo" hidden>
-            <i class="fa-solid fa-rotate-left"></i>
-          </button>
           <button class="btn-admin-primary btn-icon-only" id="btn-add-product-mobile">
             <i class="fa-solid fa-plus"></i>
           </button>
@@ -98,10 +95,6 @@
           <p id="admin-view-subtitle">Kelola daftar barang, satuan, harga jual, dan sisa stok toko Rama.</p>
         </div>
         <div class="admin-header-actions">
-          <button class="btn-admin-secondary" id="btn-reset-demo" title="Kembalikan data contoh awal" hidden>
-            <i class="fa-solid fa-rotate-left"></i>
-            <span>Reset Demo</span>
-          </button>
           <button class="btn-admin-primary" id="btn-add-product">
             <i class="fa-solid fa-plus"></i>
             <span>Tambah Produk</span>
@@ -177,7 +170,6 @@
                     <th>Produk</th>
                     <th>Kategori</th>
                     <th>Harga Satuan</th>
-                    <th>Ketersediaan Stok</th>
                     <th>ID Produk</th>
                     <th style="width: 100px;">Aksi</th>
                   </tr>
@@ -283,6 +275,31 @@
 
   </div><!-- /.admin-layout -->
 
+  <!-- MODAL: Login -->
+  <div class="modal-overlay" id="modal-login">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title"> <i class="fa-solid fa-right-to-bracket" style="color: var(--primary);"></i>
+          <span>Login</span>
+        </div> <button class="btn-close-modal" type="button" onclick="closeAllModals()"> <i
+            class="fa-solid fa-xmark"></i> </button>
+      </div>
+      <form id="login-form">
+        <div class="modal-body">
+          <div class="form-group"> <label class="form-label" for="login-username"> Username </label> <input type="text"
+              id="login-username" name="username" class="form-control" autocomplete="username" required> </div>
+          <div class="form-group"> <label class="form-label" for="login-password"> Password </label> <input
+              type="password" id="login-password" name="password" class="form-control" autocomplete="current-password"
+              required> </div>
+        </div>
+        <div class="modal-footer"> <button type="button" class="btn-clear-cart"
+            style="width: auto; height: auto; padding: 0.6rem 1rem; border-radius: var(--radius-sm);"
+            onclick="closeAllModals()"> Batal </button> <button type="submit" class="btn-checkout"> <i
+              class="fa-solid fa-right-to-bracket"></i> Login </button> </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: Add / Edit Product -->
   <div class="modal-overlay" id="modal-product-form">
     <div class="modal-card">
@@ -357,7 +374,7 @@
               <input type="number" id="prod-sale-price" class="form-control" placeholder="25000" min="0" required>
             </div>
             <div class="form-group">
-              <label class="form-label" for="prod-discount">Diskon *</label>
+              <label class="form-label" for="prod-discount">Diskon (%) *</label>
               <input type="number" id="prod-discount" class="form-control" placeholder="10" min="0" max="100" required>
             </div>
           </div>

@@ -202,60 +202,62 @@
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
-      <form id="checkout-form" onsubmit="handleSendWhatsAppOrder(event)">
+      <form id="checkout-form">
         <div class="modal-body">
 
-          <div
-            style="background: var(--primary-light); padding: 0.75rem 0.85rem; border-radius: var(--radius-sm); margin-bottom: 1rem; display: flex; gap: 0.65rem; align-items: flex-start;">
-            <i class="fa-solid fa-circle-info" style="color: var(--primary); font-size: 1.1rem; margin-top: 2px;"></i>
-            <div style="font-size: 0.8rem; color: var(--dark); line-height: 1.35;">
-              <strong>Langkah:</strong> Isi informasi pengiriman, lalu tekan
-              <strong>"Kirim Pesanan via WhatsApp"</strong> untuk mengirim detail pesanan
-              langsung ke admin Rama Swalayan.
+          <div id="not-tracking-link-container">
+            <div
+              style="background: var(--primary-light); padding: 0.75rem 0.85rem; border-radius: var(--radius-sm); margin-bottom: 1rem; display: flex; gap: 0.65rem; align-items: flex-start;">
+              <i class="fa-solid fa-circle-info" style="color: var(--primary); font-size: 1.1rem; margin-top: 2px;"></i>
+              <div style="font-size: 0.8rem; color: var(--dark); line-height: 1.35;">
+                <strong>Langkah:</strong> Isi informasi pengiriman, lalu tekan
+                <strong>"Kirim Pesanan via WhatsApp"</strong> untuk mengirim detail pesanan
+                langsung ke admin Rama Swalayan.
+              </div>
             </div>
-          </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-bottom: 0.35rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; margin-bottom: 0.35rem;">
+              <div class="form-group">
+                <label class="form-label" for="cust-name">Nama Pemesan *:</label>
+                <input type="text" id="cust-name" class="form-control" placeholder="Budi Santoso" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="cust-phone">No. WhatsApp *:</label>
+                <input type="tel" id="cust-phone" class="form-control" placeholder="08xxxxxxxxxx" required>
+              </div>
+            </div>
+
             <div class="form-group">
-              <label class="form-label" for="cust-name">Nama Pemesan *:</label>
-              <input type="text" id="cust-name" class="form-control" placeholder="Budi Santoso" required>
+              <label class="form-label" for="cust-member">No. Member:</label>
+              <input type="tel" id="cust-member" class="form-control" placeholder="xxxxxxxxxxxx">
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="cust-phone">No. WhatsApp *:</label>
-              <input type="tel" id="cust-phone" class="form-control" placeholder="08xxxxxxxxxx" required>
+              <label class="form-label" for="cust-address">Alamat Pengiriman *:</label>
+              <input type="text" id="cust-address" class="form-control" placeholder="Jl. Melati No. 12, Kel. Sekuro..."
+                required>
             </div>
-          </div>
 
-          <div class="form-group">
-            <label class="form-label" for="cust-member">No. Member:</label>
-            <input type="tel" id="cust-member" class="form-control" placeholder="xxxxxxxxxxxx">
-          </div>
+            <div class="form-group">
+              <label class="form-label" for="cust-notes">
+                Catatan Tambahan untuk Toko / Kurir:
+              </label>
+              <input type="text" id="cust-notes" class="form-control"
+                placeholder="Tolong bungkus rapi, hubungi sebelum sampai...">
+            </div>
 
-          <div class="form-group">
-            <label class="form-label" for="cust-address">Alamat Pengiriman *:</label>
-            <input type="text" id="cust-address" class="form-control" placeholder="Jl. Melati No. 12, Kel. Sekuro..."
-              required>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="cust-notes">
-              Catatan Tambahan untuk Toko / Kurir:
+            <label class="form-label" style="margin-top: 0.75rem;">
+              Detail Pesanan:
             </label>
-            <input type="text" id="cust-notes" class="form-control"
-              placeholder="Tolong bungkus rapi, hubungi sebelum sampai...">
+
+            <div class="order-preview-box" id="order-text-preview"></div>
+
+            <button class="copy-btn-large" id="btn-copy-order" type="submit">
+              <i class="fa-brands fa-whatsapp"></i>
+              <span>Kirim Pesanan via WhatsApp</span>
+            </button>
           </div>
-
-          <label class="form-label" style="margin-top: 0.75rem;">
-            Detail Pesanan:
-          </label>
-
-          <div class="order-preview-box" id="order-text-preview"></div>
-
-          <button class="copy-btn-large" id="btn-copy-order" type="submit">
-            <i class="fa-brands fa-whatsapp"></i>
-            <span>Kirim Pesanan via WhatsApp</span>
-          </button>
 
           <!-- Success & Tracking Link Container (shown after Kirim Pesanan) -->
           <div id="tracking-link-container"
