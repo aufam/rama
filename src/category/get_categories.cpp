@@ -29,12 +29,13 @@ auto rama::App::get_categories() -> std::vector<Category> {
     }();
     res.reserve(size);
 
-    auto stmt =
-        cpx::sql::select(categories.id, categories.name, categories.icon).from(categories).order_by(categories.priority.desc());
+    auto stmt = cpx::sql::select(categories.id, categories.name, categories.icon, categories.priority)
+                    .from(categories)
+                    .order_by(categories.priority);
 
     for (auto row = db(stmt); !row.is_done(); row.next()) {
         Category c;
-        std::tie(c.id, c.name, c.icon) = row.get();
+        std::tie(c.id, c.name, c.icon, c.priority) = row.get();
         res.emplace_back(std::move(c));
     }
 

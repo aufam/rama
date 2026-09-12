@@ -24,7 +24,8 @@ void rama::App::create_tables() {
         products.sale_price,
         products.category_id,
         products.unit,
-        products.image
+        products.image,
+        products.description
     ));
 
     db(create_table_if_not_exists<categories>(

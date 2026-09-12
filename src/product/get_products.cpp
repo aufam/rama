@@ -38,14 +38,16 @@ auto rama::App::get_products() -> std::vector<Product> {
                     products.sale_price,
                     products.category_id,
                     products.unit,
-                    products.image
+                    products.image,
+                    products.description
     )
                     .from(products)
                     .order_by(products.name);
 
     for (auto row = db(stmt); !row.is_done(); row.next()) {
         Product p;
-        std::tie(p.id, p.name, p.barcode, p.price, p.discount, p.sale_price, p.category, p.unit, p.image) = row.get();
+        std::tie(p.id, p.name, p.barcode, p.price, p.discount, p.sale_price, p.category, p.unit, p.image, p.description) =
+            row.get();
         res.emplace_back(std::move(p));
     }
 

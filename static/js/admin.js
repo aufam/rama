@@ -4,7 +4,7 @@
  * upload & preview foto produk, manajemen status pesanan (Order Status: received, preparing, delivering, completed),
  * serta modal tambah/edit produk dengan penanda TODO backend.
  * 
- * Update: Menambahkan infinite scroll / progressive batch rendering untuk daftar produk.
+ * Update: Menambahkan multiline product cards dengan gambar produk yang lebih besar.
  */
 
 let adminProducts = [];
@@ -73,11 +73,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupImageUploadHandlers();
 });
 
-async function loadAdminData() {
+async function loadAdminData(local = false) {
   try {
-    adminCategories = await Store.getCategories();
-    adminProducts = await Store.getProducts();
-    adminOrders = await Store.getOrders();
+    adminCategories = await Store.getCategories(local);
+    adminProducts = await Store.getProducts(local);
+    adminOrders = await Store.getOrders(local);
     populateCategoryDropdowns();
     renderStats();
     renderTable();
@@ -92,7 +92,6 @@ async function loadAdminData() {
 function updateOrdersBadge() {
   const badge = document.getElementById('nav-badge-orders');
   if (badge) {
-    // Tampilkan jumlah pesanan aktif (belum selesai)
     const activeCount = adminOrders.filter(o => o.status !== 'completed').length;
     badge.textContent = activeCount;
   }
@@ -394,7 +393,6 @@ function renderTable() {
   currentFilteredProducts = filtered;
   renderPage = 1;
 
-  // Hentikan observer sebelumnya jika ada
   if (productTableObserver) {
     productTableObserver.disconnect();
     productTableObserver = null;
@@ -417,13 +415,12 @@ function renderTable() {
 }
 
 /**
- * Menggembalikan batch produk berdasarkan halaman saat ini dan menambahkannya ke tabel.
+ * Mengembalikan batch produk dengan desain kartu multiline dan thumbnail gambar yang besar.
  */
 function renderProductBatch() {
   const tbody = document.getElementById('admin-table-body');
   if (!tbody) return;
 
-  // Hapus baris pemuat (sentinel) jika ada
   const existingSentinel = document.getElementById('admin-sentinel-row');
   if (existingSentinel) {
     existingSentinel.remove();
@@ -446,49 +443,49 @@ function renderProductBatch() {
     const discount = Number(p.discount || 0);
 
     const priceHtml = discount === 0
-      ? `<strong>${Store.formatCurrency(p.price)}</strong> / ${p.unit || 'item'}`
+      ? `
+        <span class="price-main">${Store.formatCurrency(p.price)}</span> 
+        <span class="price-unit">/ ${p.unit || 'item'}</span>
+      `
       : `
-      <div>
-        <div>
-          <span style="text-decoration: line-through; color: var(--admin-text-muted);">
-            ${Store.formatCurrency(p.price)}
-          </span>
-          <span style="margin-left: 0.4rem; color: var(--admin-text-muted);">
-            -${discount}%
-          </span>
-        </div>
-        <div>
-          <strong>${Store.formatCurrency(p.salePrice)}</strong> / ${p.unit || 'item'}
-        </div>
-      </div>
-    `;
+        <span class="price-strike">${Store.formatCurrency(p.price)}</span>
+        <span class="discount-badge">-${discount}%</span>
+        <span class="price-main price-sale">${Store.formatCurrency(p.salePrice)}</span>
+        <span class="price-unit">/ ${p.unit || 'item'}</span>
+      `;
 
     return `
-      <tr>
-        <td>
-          <div class="item-cell">
+      <tr class="product-row">
+        <td colspan="5" class="product-table-td">
+          <div class="product-item-wrapper">
             <div class="item-thumb-icon">
               ${thumbHtml}
             </div>
-            <div class="item-cell-text">
-              <div class="item-name">${p.name}</div>
-              <div class="item-desc">${p.description || '-'}</div>
+            <div class="item-info-body">
+              <div class="item-top-row">
+                <div class="item-title-group">
+                  <h3 class="item-name">${p.name}</h3>
+                  <span class="category-badge">${catName}</span>
+                </div>
+                <span class="sku-badge"><i class="fa-solid fa-barcode"></i> <code>${p.id}</code></span>
+              </div>
+              <p class="item-desc">${p.description || 'Tidak ada deskripsi produk.'}</p>
+              <div class="item-bottom-row">
+                <div class="item-price-wrapper">
+                  ${priceHtml}
+                </div>
+                <div class="table-actions">
+                  <button class="btn-tbl-action btn-edit" onclick="openEditProductModal('${p.id}')" title="Edit Produk">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>Edit</span>
+                  </button>
+                  <button class="btn-tbl-action delete" onclick="handleDeleteProduct('${p.id}')" title="Hapus Produk">
+                    <i class="fa-solid fa-trash"></i>
+                    <span>Hapus</span>
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </td>
-        <td>
-          <span class="category-badge">${catName}</span>
-        </td>
-        <td>${priceHtml}</td>
-        <td><code>${p.id}</code></td>
-        <td>
-          <div class="table-actions">
-            <button class="btn-tbl-action" onclick="openEditProductModal('${p.id}')" title="Edit Produk">
-              <i class="fa-solid fa-pen-to-square"></i>
-            </button>
-            <button class="btn-tbl-action delete" onclick="handleDeleteProduct('${p.id}')" title="Hapus Produk">
-              <i class="fa-solid fa-trash"></i>
-            </button>
           </div>
         </td>
       </tr>
@@ -497,12 +494,10 @@ function renderProductBatch() {
 
   tbody.insertAdjacentHTML('beforeend', batchHtml);
 
-  // Periksa apakah masih ada produk yang belum ditampilkan
   const loadedCount = start + batch.length;
   const hasMore = loadedCount < currentFilteredProducts.length;
 
   if (hasMore) {
-    // Tambahkan elemen penanda (sentinel) untuk deteksi scroll
     const sentinelTr = document.createElement('tr');
     sentinelTr.id = 'admin-sentinel-row';
     sentinelTr.innerHTML = `
@@ -517,9 +512,6 @@ function renderProductBatch() {
   }
 }
 
-/**
- * Menyiapkan IntersectionObserver untuk mendeteksi saat pengguna scroll ke bawah.
- */
 function setupProductSentinelObserver(sentinelElement) {
   if (productTableObserver) {
     productTableObserver.disconnect();
@@ -534,16 +526,13 @@ function setupProductSentinelObserver(sentinelElement) {
     }
   }, {
     root: null,
-    rootMargin: '150px', // Memuat batch baru sebelum pengguna benar-benar sampai di dasar
+    rootMargin: '150px',
     threshold: 0.1
   });
 
   productTableObserver.observe(sentinelElement);
 }
 
-/**
- * Render Orders Table for Admin
- */
 function renderOrdersTable() {
   const tbody = document.getElementById('admin-orders-table-body');
   if (!tbody) return;
@@ -569,7 +558,6 @@ function renderOrdersTable() {
   currentFilteredOrders = filtered;
   renderOrderPage = 1;
 
-  // Hentikan observer sebelumnya jika ada
   if (orderTableObserver) {
     orderTableObserver.disconnect();
     orderTableObserver = null;
@@ -591,14 +579,10 @@ function renderOrdersTable() {
   renderOrderBatch();
 }
 
-/**
- * Mengembalikan batch pesanan berdasarkan halaman saat ini dan menambahkannya ke tabel.
- */
 function renderOrderBatch() {
   const tbody = document.getElementById('admin-orders-table-body');
   if (!tbody) return;
 
-  // Hapus baris pemuat (sentinel) jika ada
   const existingSentinel = document.getElementById('admin-order-sentinel-row');
   if (existingSentinel) {
     existingSentinel.remove();
@@ -664,12 +648,10 @@ function renderOrderBatch() {
 
   tbody.insertAdjacentHTML('beforeend', batchHtml);
 
-  // Periksa apakah masih ada pesanan yang belum ditampilkan
   const loadedCount = start + batch.length;
   const hasMore = loadedCount < currentFilteredOrders.length;
 
   if (hasMore) {
-    // Tambahkan elemen penanda (sentinel) untuk deteksi scroll
     const sentinelTr = document.createElement('tr');
     sentinelTr.id = 'admin-order-sentinel-row';
     sentinelTr.innerHTML = `
@@ -684,9 +666,6 @@ function renderOrderBatch() {
   }
 }
 
-/**
- * Menyiapkan IntersectionObserver untuk mendeteksi saat pengguna scroll ke bawah pada tabel pesanan.
- */
 function setupOrderSentinelObserver(sentinelElement) {
   if (orderTableObserver) {
     orderTableObserver.disconnect();
@@ -771,16 +750,37 @@ window.openOrderDetailModal = async function(orderId) {
       <div>
         <h4 style="font-size: 0.9rem; font-weight: 800; margin-bottom: 0.5rem;">Daftar Item (${order.totalCount}):</h4>
         <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-          ${order.items.map((item, idx) => `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: #fff; border: 1px solid var(--admin-border); border-radius: 8px;">
-              <div>
-                <div style="font-weight: 700; font-size: 0.85rem;">${idx + 1}. ${item.name}</div>
-                <div style="font-size: 0.75rem; color: var(--admin-text-muted);">${item.quantity} ${item.unit} x ${Store.formatCurrency(item.price)}</div>
-                ${item.notes ? `<div style="font-size: 0.7rem; color: var(--admin-accent); font-style: italic;">Catatan: ${item.notes}</div>` : ''}
+          ${order.items.map((item, idx) => {
+      const product = Store.getProductById(item.id);
+      const barcodeValue = product?.barcode || '';
+
+      return `
+              <div style="padding: 0.6rem 0.8rem; background: #fff; border: 1px solid var(--admin-border); border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <div style="font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                      <span>${idx + 1}. ${item.name}</span>
+                      ${barcodeValue ? `
+                        <button type="button" 
+                                onclick="toggleItemBarcode('${idx}', '${barcodeValue}')"
+                                style="background: var(--gray-100, #f1f5f9); border: 1px solid var(--admin-border); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.75rem;">
+                          <i class="fa-solid fa-barcode"></i>
+                        </button>
+                      ` : ''}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--admin-text-muted);">${item.quantity} ${item.unit} x ${Store.formatCurrency(item.price)}</div>
+                    ${item.notes ? `<div style="font-size: 0.7rem; color: var(--admin-accent); font-style: italic;">Catatan: ${item.notes}</div>` : ''}
+                  </div>
+                  <div style="font-weight: 800; font-size: 0.9rem;">${Store.formatCurrency(item.price * item.quantity)}</div>
+                </div>
+                ${barcodeValue ? `
+                  <div id="barcode-container-${idx}" style="display: none; text-align: center; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--admin-border);">
+                    <svg id="barcode-svg-${idx}"></svg>
+                  </div>
+                ` : ''}
               </div>
-              <div style="font-weight: 800; font-size: 0.9rem;">${Store.formatCurrency(item.price * item.quantity)}</div>
-            </div>
-          `).join('')}
+            `;
+    }).join('')}
         </div>
       </div>
 
@@ -793,6 +793,29 @@ window.openOrderDetailModal = async function(orderId) {
 
   const modal = document.getElementById('modal-order-detail');
   if (modal) modal.classList.add('active');
+};
+
+window.toggleItemBarcode = function(index, barcodeValue) {
+  const container = document.getElementById(`barcode-container-${index}`);
+  if (!container) return;
+
+  const isHidden = container.style.display === 'none';
+  if (isHidden) {
+    container.style.display = 'block';
+    const svgId = `#barcode-svg-${index}`;
+    if (typeof JsBarcode !== 'undefined') {
+      JsBarcode(svgId, barcodeValue, {
+        format: "EAN13",
+        flat: true,
+        width: 1.5,
+        height: 45,
+        fontSize: 12,
+        margin: 5
+      });
+    }
+  } else {
+    container.style.display = 'none';
+  }
 };
 
 function openAddProductModal() {
@@ -850,7 +873,7 @@ async function handleProductFormSubmit(e) {
     await Store.patchProduct(productData);
 
     closeAllModals();
-    await loadAdminData();
+    await loadAdminData(true);
   } catch (err) {
     console.error('Gagal menyimpan produk:', err);
     alert('Gagal menyimpan produk: ' + err.message);
@@ -864,7 +887,7 @@ window.handleDeleteProduct = async function(productId) {
   if (confirm(`Apakah Anda yakin ingin menghapus produk "${name}"?`)) {
     try {
       await Store.deleteProduct(productId);
-      await loadAdminData();
+      await loadAdminData(true);
     } catch (err) {
       console.error('Gagal menghapus produk:', err);
       alert('Gagal menghapus produk: ' + err.message);

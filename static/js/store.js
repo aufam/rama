@@ -332,7 +332,12 @@ const Store = {
    * =========================================================================
    */
 
-  async getCategories() {
+  async getCategories(local = true) {
+    if (local) {
+      const raw = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      return raw ? JSON.parse(raw) : [];
+    }
+
     const response = await fetch("api/categories");
 
     if (!response.ok) {
@@ -351,7 +356,7 @@ const Store = {
 
   async getProducts(local = false) {
     if (local) {
-      const raw = localStorage.getItem(STORAGE_KEYS.ORDERS);
+      const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       return raw ? JSON.parse(raw) : [];
     }
 
@@ -436,11 +441,13 @@ const Store = {
     return true;
   },
 
+  getProductById(id) {
+    const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
+    const products = raw ? JSON.parse(raw) : [];
+    return products.find(product => product.id === id) ?? null;
+  },
+
   async resetToDefault() {
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS));
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(DEFAULT_CATEGORIES));
-    localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(DEFAULT_ORDERS));
-    return { products: DEFAULT_PRODUCTS, categories: DEFAULT_CATEGORIES, orders: DEFAULT_ORDERS };
   },
 
   /**

@@ -443,7 +443,6 @@ body.admin-body {
 
 .admin-table {
   width: 100%;
-  min-width: 580px;
   border-collapse: collapse;
   text-align: left;
   font-size: 0.875rem;
@@ -451,7 +450,7 @@ body.admin-body {
 
 .admin-table th {
   background: var(--admin-bg);
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1.25rem;
   font-weight: 700;
   color: var(--admin-text-muted);
   border-bottom: 1px solid var(--admin-border);
@@ -462,7 +461,7 @@ body.admin-body {
 }
 
 .admin-table td {
-  padding: 0.9rem 1rem;
+  padding: 0;
   border-bottom: 1px solid var(--admin-border);
   vertical-align: middle;
 }
@@ -471,58 +470,163 @@ body.admin-body {
   border-bottom: none;
 }
 
-.admin-table tbody tr:hover {
+.admin-table tbody tr.product-row:hover {
   background-color: #f8fafc;
 }
 
-.item-cell {
+/* STREAMING_CHUNK:Styling product item card wrapper and large image thumbnail... /
+/ ENLARGED MULTILINE PRODUCT ITEM CARD STYLING */
+.product-table-td {
+  padding: 1.1rem 1.25rem !important;
+}
+
+.product-item-wrapper {
   display: flex;
-  align-items: center;
-  gap: 0.65rem;
+  gap: 1.25rem;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .item-thumb-icon {
-  width: 40px;
-  height: 40px;
+  width: 110px;
+  height: 110px;
   background: #f1f5f9;
-  border-radius: 8px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: 2.2rem;
   color: var(--admin-accent);
   overflow: hidden;
   flex-shrink: 0;
   border: 1px solid var(--admin-border);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
 }
 
 .item-thumb-icon img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.25s ease;
 }
 
-.item-cell-text .item-name {
+.product-item-wrapper:hover .item-thumb-icon img {
+  transform: scale(1.05);
+}
+
+/* STREAMING_CHUNK:Styling multiline product details and price badges... */
+.item-info-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.item-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.item-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.item-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--admin-text-main);
+  line-height: 1.25;
+  margin: 0;
+}
+
+.sku-badge {
+  font-size: 0.75rem;
+  color: var(--admin-text-muted);
+  background: #f1f5f9;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--admin-border);
+  white-space: nowrap;
+}
+
+.sku-badge code {
   font-weight: 700;
   color: var(--admin-text-main);
-  font-size: 0.875rem;
 }
 
-.item-cell-text .item-desc {
-  font-size: 0.72rem;
+.item-desc {
+  font-size: 0.825rem;
   color: var(--admin-text-muted);
-  max-width: 200px;
-  white-space: nowrap;
+  line-height: 1.45;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.item-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--admin-border);
+  margin-top: 0.2rem;
+}
+
+.item-price-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.price-main {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--admin-text-main);
+}
+
+.price-main.price-sale {
+  color: var(--admin-accent);
+}
+
+.price-strike {
+  text-decoration: line-through;
+  color: var(--admin-text-muted);
+  font-size: 0.85rem;
+}
+
+.discount-badge {
+  background: #fee2e2;
+  color: var(--admin-danger);
+  font-size: 0.725rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+}
+
+.price-unit {
+  font-size: 0.8rem;
+  color: var(--admin-text-muted);
+  font-weight: 600;
 }
 
 .category-badge {
   display: inline-block;
-  padding: 0.2rem 0.55rem;
+  padding: 0.2rem 0.6rem;
   border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.725rem;
+  font-weight: 700;
   background: #e2e8f0;
   color: var(--admin-text-main);
   text-transform: capitalize;
@@ -596,48 +700,59 @@ body.admin-body {
 
 .table-actions {
   display: flex;
-  gap: 0.4rem;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .btn-tbl-action {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  height: 36px;
+  padding: 0 0.85rem;
+  border-radius: 8px;
   border: 1px solid var(--admin-border);
   background: #fff;
-  color: var(--admin-text-muted);
+  color: var(--admin-text-main);
+  font-size: 0.825rem;
+  font-weight: 700;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
+  gap: 0.4rem;
+  transition: all 0.2s;
   text-decoration: none;
   flex-shrink: 0;
 }
 
 .btn-tbl-action:hover {
   background: #f1f5f9;
+  border-color: #cbd5e1;
   color: var(--admin-text-main);
+}
+
+.btn-tbl-action.delete {
+  color: var(--admin-danger);
+  border-color: #fca5a5;
+  background: #fff;
 }
 
 .btn-tbl-action.delete:hover {
   background: #fee2e2;
-  color: var(--admin-danger);
-  border-color: #fca5a5;
+  color: #dc2626;
+  border-color: #f87171;
 }
 
-/* IMAGE UPLOAD */
+/* STREAMING_CHUNK:Styling enlarged image upload dropzone and preview... /
+/ ENLARGED IMAGE UPLOAD & PREVIEW IN FORM */
 .image-upload-wrapper {
   display: flex;
-  gap: 1rem;
+  gap: 1.25rem;
   align-items: center;
 }
 
 .image-dropzone {
   flex: 1;
   border: 2px dashed #cbd5e1;
-  border-radius: 12px;
-  padding: 1.25rem 1rem;
+  border-radius: 14px;
+  padding: 1.5rem 1rem;
   text-align: center;
   cursor: pointer;
   background: #f8fafc;
@@ -655,7 +770,7 @@ body.admin-body {
 }
 
 .image-dropzone i {
-  font-size: 1.8rem;
+  font-size: 2.2rem;
   color: #64748b;
   transition: color 0.2s;
 }
@@ -665,20 +780,20 @@ body.admin-body {
 }
 
 .image-dropzone-text {
-  font-size: 0.825rem;
+  font-size: 0.875rem;
   font-weight: 700;
   color: #334155;
 }
 
 .image-dropzone-sub {
-  font-size: 0.725rem;
+  font-size: 0.75rem;
   color: #94a3b8;
 }
 
 .image-preview-box {
-  width: 90px;
-  height: 90px;
-  border-radius: 12px;
+  width: 130px;
+  height: 130px;
+  border-radius: 16px;
   border: 2px solid #e2e8f0;
   background: #f1f5f9;
   display: flex;
@@ -687,6 +802,7 @@ body.admin-body {
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .image-preview-box img {
@@ -696,26 +812,32 @@ body.admin-body {
 }
 
 .image-preview-box .placeholder-icon {
-  font-size: 2rem;
+  font-size: 2.5rem;
   color: #cbd5e1;
 }
 
 .btn-remove-img {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 22px;
-  height: 22px;
-  background: rgba(239, 68, 68, 0.9);
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  background: rgba(239, 68, 68, 0.95);
   color: #fff;
   border: none;
   border-radius: 50%;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   cursor: pointer;
   display: none;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.btn-remove-img:hover {
+  transform: scale(1.1);
+  background: #dc2626;
 }
 
 .image-preview-box.has-image .btn-remove-img {
@@ -877,6 +999,33 @@ body.admin-body {
     width: 100%;
   }
 
+  /* Responsive Adjustments for Enlarged Item Card */
+  .product-table-td {
+    padding: 0.85rem !important;
+  }
+
+  .product-item-wrapper {
+    gap: 0.85rem;
+  }
+
+  .item-thumb-icon {
+    width: 90px;
+    height: 90px;
+    font-size: 1.8rem;
+    border-radius: 12px;
+  }
+
+  .item-bottom-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .table-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
   .image-upload-wrapper {
     flex-direction: column;
     align-items: stretch;
@@ -884,8 +1033,8 @@ body.admin-body {
 
   .image-preview-box {
     margin: 0 auto;
-    width: 80px;
-    height: 80px;
+    width: 110px;
+    height: 110px;
   }
 
   .form-row-2col {
@@ -900,6 +1049,12 @@ body.admin-body {
 
   .stats-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .item-thumb-icon {
+    width: 75px;
+    height: 75px;
+    font-size: 1.5rem;
   }
 }
 

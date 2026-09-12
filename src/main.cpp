@@ -42,6 +42,18 @@ void log(fmt::format_string<Args...> fmt_str, Args &&...args) {
     fmt::println(fmt_str, std::forward<Args>(args)...);
 }
 
+struct Branch {
+    std::string root;
+    std::string spreadsheet;
+    std::string password;
+
+    static constexpr std::tuple __field_tags__ = {
+        cpx::field<&Branch::root>        = "root",
+        cpx::field<&Branch::spreadsheet> = "spreadsheet",
+        cpx::field<&Branch::password>    = "password",
+    };
+};
+
 int main(int argc, char **argv) {
     const auto args = cpx::cli11::parse<Args>("Rama swalayan", argc, argv);
 
@@ -82,14 +94,20 @@ int main(int argc, char **argv) {
         log("[{}:{}] {} {}", ep.address().to_string(), ep.port(), (int)res.result(), res.reason());
     });
 
+    std::unordered_map<std::string, Branch>                     branches;
+    std::unordered_map<std::string, std::unique_ptr<rama::App>> apps;
+    cpx::yy_json::parse_from_file(args.working_dir + "/branches.json", branches);
+
     rama::App sekuro(args.working_dir + "/static/sekuro/assets/database.db");
 
     std::unordered_map<std::string, rama::App *> all = {
         {"/sekuro", &sekuro}
     };
 
-    for (auto &[root, p] : all) {
-        auto &app = *p;
+    for (const auto &[branch_name, branch] : branches) {
+        const auto &root  = branch.root;
+        apps[branch_name] = std::make_unique<rama::App>(args.working_dir + "/static" + root + "/assets/database.db");
+        auto &app         = *apps.at(branch_name);
         app.create_tables();
 
         router.use(root + "/api/", [](brb::Context &c) -> brb::awaitable<void> {
@@ -165,7 +183,7 @@ int main(int argc, char **argv) {
             };
             cpx::yy_json::parse(body, req);
 
-            if (password != "ramashinta") {
+            if (password != branch.password) {
                 throw rama::Error{"invalid password", 401};
             }
 
@@ -266,8 +284,7 @@ int main(int argc, char **argv) {
         router.route("POST " + root + "/api/auth/sync", [&](brb::Context &c) -> brb::awaitable<void> {
             log("{}: sync table", c.get<std::string>("username"));
 
-            std::string file_id = "117Mf8b2LgeNBseN5uJyxa5yFL_Hha6T9tGMdZRcCxzI";
-            std::string url     = "https://docs.google.com/spreadsheets/d/" + file_id + "/export?format=csv";
+            std::string url = branch.spreadsheet;
 
             const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
             const auto filedir  = args.working_dir + "/static" + root + "/assets/tables/";
@@ -376,8 +393,6 @@ int main(int argc, char **argv) {
         });
 
         router.route("POST " + root + "/api/auth/products", [&](brb::Context &c) -> brb::awaitable<void> {
-            log("{}: create product", c.get<std::string>("username"));
-
             auto &body    = c.parser_string().get().body();
             auto  product = cpx::yy_json::parse<rama::Product>(body);
 

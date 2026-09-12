@@ -17,9 +17,9 @@ void rama::App::add_category(const Category &p) {
             .query  = "insert into categories (id, name, icon, priority) "
                       "values (?, ?, ?, ?) "
                       "on conflict (id) do update set "
-                      "name = case when excluded.name != '' then excluded.name else products.name end, "
-                      "icon = case when excluded.icon != '' then excluded.icon else products.icon end, "
-                      "priority = case when excluded.priority != '' then excluded.priority else products.priority end "
+                      "name = case when excluded.name != '' then excluded.name else categories.name end, "
+                      "icon = case when excluded.icon != '' then excluded.icon else categories.icon end, "
+                      "priority = case when excluded.priority != '' then excluded.priority else categories.priority end "
                       "returning categories.id",
             .params = {p.id, p.name, p.icon, p.priority},
     };
