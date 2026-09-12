@@ -38,6 +38,10 @@ async function loadInitialData() {
   }
 }
 
+let filteredProducts = [];
+let renderIndex = 0;
+const RENDER_BATCH = 20;
+
 function setupEventListeners() {
   // Kotak pencarian
   const searchInput = document.getElementById('search-input');
@@ -45,6 +49,16 @@ function setupEventListeners() {
     searchInput.addEventListener('input', (e) => {
       searchQuery = e.target.value.toLowerCase().trim();
       renderProducts();
+    });
+  }
+
+  // Infinite Scroll
+  const productsContainer = document.querySelector('.products-container');
+  if (productsContainer) {
+    productsContainer.addEventListener('scroll', () => {
+      if (productsContainer.scrollTop + productsContainer.clientHeight >= productsContainer.scrollHeight - 200) {
+        loadMoreProducts();
+      }
     });
   }
 
@@ -129,26 +143,16 @@ function setupEventListeners() {
 }
 
 function renderCategories() {
-  const categoryBar = document.getElementById('category-bar');
-  if (!categoryBar) return;
+  const categorySelect = document.getElementById('category-select');
+  if (!categorySelect) return;
 
-  categoryBar.innerHTML = allCategories.map(cat => `
-    <button class="cat-chip-btn ${cat.id === activeCategoryId ? 'active' : ''}" data-cat-id="${cat.id}">
-      <i class="fa-solid ${cat.icon}"></i>
-      <span>${cat.id}</span>
-    </button>
+  categorySelect.innerHTML = `<option value="">Semua Kategori</option>` + allCategories.map(cat => `
+    <option value="${cat.id}">${cat.id}</option>
   `).join('');
 
-  categoryBar.querySelectorAll('.cat-chip-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      activeCategoryId = btn.getAttribute('data-cat-id');
-      categoryBar.querySelectorAll('.cat-chip-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-
-      // Auto-scroll the active chip into view horizontally
-      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      renderProducts();
-    });
+  categorySelect.addEventListener('change', (e) => {
+    activeCategoryId = e.target.value || null;
+    renderProducts();
   });
 }
 
@@ -156,22 +160,22 @@ function renderProducts() {
   const grid = document.getElementById('products-grid');
   if (!grid) return;
 
-  let filtered = allProducts;
+  filteredProducts = allProducts;
 
   // Filter berdasarkan kategori
   if (activeCategoryId) {
-    filtered = filtered.filter(p => p.category === activeCategoryId);
+    filteredProducts = filteredProducts.filter(p => p.category === activeCategoryId);
   }
 
   // Filter berdasarkan pencarian kata kunci
   if (searchQuery) {
-    filtered = filtered.filter(p =>
+    filteredProducts = filteredProducts.filter(p =>
       p.name.toLowerCase().includes(searchQuery) ||
       (p.description && p.description.toLowerCase().includes(searchQuery))
     );
   }
 
-  if (filtered.length === 0) {
+  if (filteredProducts.length === 0) {
     grid.innerHTML = `
       <div class="empty-catalog" style="grid-column: 1 / -1;">
         <i class="fa-solid fa-box-open"></i>
@@ -182,7 +186,17 @@ function renderProducts() {
     return;
   }
 
-  grid.innerHTML = filtered.map(p => {
+  grid.innerHTML = '';
+  renderIndex = 0;
+  loadMoreProducts();
+}
+
+function loadMoreProducts() {
+  const grid = document.getElementById('products-grid');
+  if (!grid || renderIndex >= filteredProducts.length) return;
+
+  const nextBatch = filteredProducts.slice(renderIndex, renderIndex + RENDER_BATCH);
+  const html = nextBatch.map(p => {
     // NOTE: stock is disabled
     p.stock = 100;
 
@@ -246,6 +260,9 @@ function renderProducts() {
     </div>
   `;
   }).join('');
+  
+  grid.insertAdjacentHTML('beforeend', html);
+  renderIndex += RENDER_BATCH;
 }
 
 function quickAddToCart(productId) {

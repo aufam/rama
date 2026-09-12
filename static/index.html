@@ -43,14 +43,15 @@
       </div>
     </header>
 
-    <!-- Horizontal Category Chips (Mobile Optimized) -->
-    <nav class="mobile-category-nav" id="category-bar">
-      <!-- Injected via kiosk.js -->
-    </nav>
-
     <!-- Main Catalog View -->
     <main class="kiosk-main">
       <div class="main-topbar">
+        <div class="category-dropdown">
+          <select id="category-select" class="category-select">
+            <option value="">Semua Kategori</option>
+            <!-- Injected via kiosk.js -->
+          </select>
+        </div>
         <div class="search-box">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input type="text" id="search-input" class="search-input" placeholder="Cari nama produk / kebutuhan..."

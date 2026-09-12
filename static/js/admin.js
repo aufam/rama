@@ -3,6 +3,8 @@
  * Mengelola daftar produk, filter status stok & kategori, pencarian real-time,
  * upload & preview foto produk, manajemen status pesanan (Order Status: received, preparing, delivering, completed),
  * serta modal tambah/edit produk dengan penanda TODO backend.
+ * 
+ * Update: Menambahkan infinite scroll / progressive batch rendering untuk daftar produk.
  */
 
 let adminProducts = [];
@@ -11,6 +13,18 @@ let adminOrders = [];
 let currentAdminTab = 'products'; // 'products' | 'orders'
 let editingProductId = null;
 let currentUploadedImageData = null;
+
+// Variabel state untuk Progressive Rendering / Infinite Scroll produk
+let renderPage = 1;
+const ITEMS_PER_PAGE = 15;
+let currentFilteredProducts = [];
+let productTableObserver = null;
+
+// Variabel state untuk Progressive Rendering / Infinite Scroll pesanan
+let renderOrderPage = 1;
+const ORDERS_PER_PAGE = 15;
+let currentFilteredOrders = [];
+let orderTableObserver = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   Store.loadToken();
@@ -52,7 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       };
     });
-  }
+  };
 
   await loadAdminData();
   setupAdminListeners();
@@ -212,13 +226,12 @@ function setupAdminListeners() {
     salePriceInput.value = Math.round(salePrice);
   }
 
-  priceInput.addEventListener('input', calculateSalePrice);
-  discountInput.addEventListener('input', calculateSalePrice);
+  if (priceInput && discountInput && salePriceInput) {
+    priceInput.addEventListener('input', calculateSalePrice);
+    discountInput.addEventListener('input', calculateSalePrice);
+  }
 }
 
-/**
- * Image Upload & Dropzone Controller
- */
 function setupImageUploadHandlers() {
   const dropzone = document.getElementById('image-dropzone');
   const fileInput = document.getElementById('prod-image-file');
@@ -354,6 +367,10 @@ function renderStats() {
   if (completedEl) completedEl.textContent = adminOrders.filter(o => o.status === 'completed').length;
 }
 
+/**
+ * Inisialisasi tabel produk dan menyaring data berdasarkan pencarian & filter.
+ * Menggunakan progressive rendering agar item dimuat secara bertahap saat scroll.
+ */
 function renderTable() {
   const tbody = document.getElementById('admin-table-body');
   if (!tbody) return;
@@ -374,7 +391,16 @@ function renderTable() {
     );
   }
 
-  if (filtered.length === 0) {
+  currentFilteredProducts = filtered;
+  renderPage = 1;
+
+  // Hentikan observer sebelumnya jika ada
+  if (productTableObserver) {
+    productTableObserver.disconnect();
+    productTableObserver = null;
+  }
+
+  if (currentFilteredProducts.length === 0) {
     tbody.innerHTML = `
       <tr>
         <td colspan="5" style="text-align: center; padding: 2.5rem; color: var(--admin-text-muted);">
@@ -386,9 +412,30 @@ function renderTable() {
     return;
   }
 
-  tbody.innerHTML = filtered.map(p => {
+  tbody.innerHTML = '';
+  renderProductBatch();
+}
+
+/**
+ * Menggembalikan batch produk berdasarkan halaman saat ini dan menambahkannya ke tabel.
+ */
+function renderProductBatch() {
+  const tbody = document.getElementById('admin-table-body');
+  if (!tbody) return;
+
+  // Hapus baris pemuat (sentinel) jika ada
+  const existingSentinel = document.getElementById('admin-sentinel-row');
+  if (existingSentinel) {
+    existingSentinel.remove();
+  }
+
+  const start = (renderPage - 1) * ITEMS_PER_PAGE;
+  const batch = currentFilteredProducts.slice(start, start + ITEMS_PER_PAGE);
+
+  if (batch.length === 0) return;
+
+  const batchHtml = batch.map(p => {
     const catObj = adminCategories.find(c => c.id === p.category);
-    // const catName = catObj ? catObj.name : p.category;
     const catName = p.category;
     const catIcon = catObj ? catObj.icon : 'fa-box';
 
@@ -411,7 +458,7 @@ function renderTable() {
           </span>
         </div>
         <div>
-          <strong>${Store.formatCurrency(p.sale_price)}</strong> / ${p.unit || 'item'}
+          <strong>${Store.formatCurrency(p.salePrice)}</strong> / ${p.unit || 'item'}
         </div>
       </div>
     `;
@@ -447,6 +494,51 @@ function renderTable() {
       </tr>
     `;
   }).join('');
+
+  tbody.insertAdjacentHTML('beforeend', batchHtml);
+
+  // Periksa apakah masih ada produk yang belum ditampilkan
+  const loadedCount = start + batch.length;
+  const hasMore = loadedCount < currentFilteredProducts.length;
+
+  if (hasMore) {
+    // Tambahkan elemen penanda (sentinel) untuk deteksi scroll
+    const sentinelTr = document.createElement('tr');
+    sentinelTr.id = 'admin-sentinel-row';
+    sentinelTr.innerHTML = `
+      <td colspan="5" style="text-align: center; padding: 1.25rem; color: var(--admin-text-muted); font-size: 0.85rem;">
+        <i class="fa-solid fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>
+        Memuat produk berikutnya (${loadedCount} dari ${currentFilteredProducts.length})...
+      </td>
+    `;
+    tbody.appendChild(sentinelTr);
+
+    setupProductSentinelObserver(sentinelTr);
+  }
+}
+
+/**
+ * Menyiapkan IntersectionObserver untuk mendeteksi saat pengguna scroll ke bawah.
+ */
+function setupProductSentinelObserver(sentinelElement) {
+  if (productTableObserver) {
+    productTableObserver.disconnect();
+  }
+
+  productTableObserver = new IntersectionObserver((entries) => {
+    const entry = entries[0];
+    if (entry && entry.isIntersecting) {
+      productTableObserver.disconnect();
+      renderPage++;
+      renderProductBatch();
+    }
+  }, {
+    root: null,
+    rootMargin: '150px', // Memuat batch baru sebelum pengguna benar-benar sampai di dasar
+    threshold: 0.1
+  });
+
+  productTableObserver.observe(sentinelElement);
 }
 
 /**
@@ -474,7 +566,16 @@ function renderOrdersTable() {
     );
   }
 
-  if (filtered.length === 0) {
+  currentFilteredOrders = filtered;
+  renderOrderPage = 1;
+
+  // Hentikan observer sebelumnya jika ada
+  if (orderTableObserver) {
+    orderTableObserver.disconnect();
+    orderTableObserver = null;
+  }
+
+  if (currentFilteredOrders.length === 0) {
     tbody.innerHTML = `
       <tr>
         <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--admin-text-muted);">
@@ -486,7 +587,29 @@ function renderOrdersTable() {
     return;
   }
 
-  tbody.innerHTML = filtered.map(order => {
+  tbody.innerHTML = '';
+  renderOrderBatch();
+}
+
+/**
+ * Mengembalikan batch pesanan berdasarkan halaman saat ini dan menambahkannya ke tabel.
+ */
+function renderOrderBatch() {
+  const tbody = document.getElementById('admin-orders-table-body');
+  if (!tbody) return;
+
+  // Hapus baris pemuat (sentinel) jika ada
+  const existingSentinel = document.getElementById('admin-order-sentinel-row');
+  if (existingSentinel) {
+    existingSentinel.remove();
+  }
+
+  const start = (renderOrderPage - 1) * ORDERS_PER_PAGE;
+  const batch = currentFilteredOrders.slice(start, start + ORDERS_PER_PAGE);
+
+  if (batch.length === 0) return;
+
+  const batchHtml = batch.map(order => {
     const statusMeta = Store.ORDER_STATUSES[order.status.toUpperCase()] || { label: order.status, icon: 'fa-circle' };
     const dateStr = new Date(order.createdAt).toLocaleString('id-ID', {
       dateStyle: 'short',
@@ -538,6 +661,51 @@ function renderOrdersTable() {
       </tr>
     `;
   }).join('');
+
+  tbody.insertAdjacentHTML('beforeend', batchHtml);
+
+  // Periksa apakah masih ada pesanan yang belum ditampilkan
+  const loadedCount = start + batch.length;
+  const hasMore = loadedCount < currentFilteredOrders.length;
+
+  if (hasMore) {
+    // Tambahkan elemen penanda (sentinel) untuk deteksi scroll
+    const sentinelTr = document.createElement('tr');
+    sentinelTr.id = 'admin-order-sentinel-row';
+    sentinelTr.innerHTML = `
+      <td colspan="6" style="text-align: center; padding: 1.25rem; color: var(--admin-text-muted); font-size: 0.85rem;">
+        <i class="fa-solid fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>
+        Memuat pesanan berikutnya (${loadedCount} dari ${currentFilteredOrders.length})...
+      </td>
+    `;
+    tbody.appendChild(sentinelTr);
+
+    setupOrderSentinelObserver(sentinelTr);
+  }
+}
+
+/**
+ * Menyiapkan IntersectionObserver untuk mendeteksi saat pengguna scroll ke bawah pada tabel pesanan.
+ */
+function setupOrderSentinelObserver(sentinelElement) {
+  if (orderTableObserver) {
+    orderTableObserver.disconnect();
+  }
+
+  orderTableObserver = new IntersectionObserver((entries) => {
+    const entry = entries[0];
+    if (entry && entry.isIntersecting) {
+      orderTableObserver.disconnect();
+      renderOrderPage++;
+      renderOrderBatch();
+    }
+  }, {
+    root: null,
+    rootMargin: '150px',
+    threshold: 0.1
+  });
+
+  orderTableObserver.observe(sentinelElement);
 }
 
 window.handleUpdateOrderStatus = async function(orderId, newStatus) {

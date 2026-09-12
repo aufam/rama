@@ -36,6 +36,12 @@ struct Args {
     };
 };
 
+template <typename... Args>
+void log(fmt::format_string<Args...> fmt_str, Args &&...args) {
+    fmt::print("{:%Y-%m-%d %H:%M:%S} ", std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()));
+    fmt::println(fmt_str, std::forward<Args>(args)...);
+}
+
 int main(int argc, char **argv) {
     const auto args = cpx::cli11::parse<Args>("Rama swalayan", argc, argv);
 
@@ -43,386 +49,409 @@ int main(int argc, char **argv) {
     boost::asio::ip::tcp::acceptor acceptor{io};
     brb::Router                    router;
     std::atomic_bool               is_running{true};
-    rama::App                      app("database.db");
     rama::JWT                      jwt{"rama-jwt"};
 
-    app.create_tables();
+    // rama::App app("database.db");
+    // app.create_tables();
 
-    if (auto &csv = args.dump_csv; !csv.empty()) {
-        app.dump_products_csv(csv);
-        return 0;
-    }
-
-    if (auto &csv = args.load_csv; !csv.empty()) {
-        app.load_products_csv(csv);
-        return 0;
-    }
+    // if (auto &csv = args.dump_csv; !csv.empty()) {
+    //     app.dump_products_csv(csv);
+    //     return 0;
+    // }
+    //
+    // if (auto &csv = args.load_csv; !csv.empty()) {
+    //     app.load_products_csv(csv);
+    //     return 0;
+    // }
 
     router.mount("/", "static");
 
     router.use("/", [](brb::Context &c) -> brb::awaitable<void> {
         const auto  ep  = c.stream->socket().remote_endpoint();
         const auto &req = c.req();
-        fmt::println("[{}:{}] {} {}", ep.address().to_string(), ep.port(), req.method_string(), req.target());
+        log("[{}:{}] {} {}", ep.address().to_string(), ep.port(), req.method_string(), req.target());
 
         try {
             co_await c.next();
         } catch (boost::system::system_error &e) {
-            fmt::println("[{}:{}] {}", ep.address().to_string(), ep.port(), e.code().message());
+            log("[{}:{}] {}", ep.address().to_string(), ep.port(), e.code().message());
             co_return;
         }
 
         const auto &res = c.res();
-        fmt::println("[{}:{}] {} {}", ep.address().to_string(), ep.port(), (int)res.result(), res.reason());
+        log("[{}:{}] {} {}", ep.address().to_string(), ep.port(), (int)res.result(), res.reason());
     });
 
-    router.use("/api/", [](brb::Context &c) -> brb::awaitable<void> {
-        auto &parser = c.parser_string();
-        auto &req    = parser.get();
-        auto &res    = c.response_string();
+    rama::App sekuro(args.working_dir + "/static/sekuro/assets/database.db");
 
-        if (req.has_content_length())
-            co_await brb::http::async_read(*c.stream, c.buffer, parser);
+    std::unordered_map<std::string, rama::App *> all = {
+        {"/sekuro", &sekuro}
+    };
 
-        try {
+    for (auto &[root, p] : all) {
+        auto &app = *p;
+        app.create_tables();
+
+        router.use(root + "/api/", [](brb::Context &c) -> brb::awaitable<void> {
+            auto &parser = c.parser_string();
+            auto &req    = parser.get();
+            auto &res    = c.response_string();
+
+            if (req.has_content_length())
+                co_await brb::http::async_read(*c.stream, c.buffer, parser);
+
+            try {
+                co_await c.next();
+            } catch (rama::Error &e) {
+                // api error
+                auto &res = c.response_string();
+                res.result(e.status);
+                res.body() = cpx::yy_json::dump(e);
+            } catch (cpx::serde::error &e) {
+                // json parsing error
+                log("serde::error: {}", e.what());
+                res.result(brb::http::status::bad_request);
+                res.body() = "null";
+            } catch (boost::system::system_error &) {
+                throw;
+            } catch (std::invalid_argument &e) {
+                log("std::invalid_argument: {}", e.what());
+                rama::Error error{e.what(), (int)brb::http::status::bad_request};
+                res.result(brb::http::status::bad_request);
+                res.body() = "null";
+            } catch (std::exception &e) {
+                log("std::exception: {}", e.what());
+                rama::Error error{e.what()};
+                res.result(brb::http::status::internal_server_error);
+                res.body() = "null";
+            }
+
+            res.set(brb::http::field::content_type, "application/json");
+            res.prepare_payload();
+            co_await brb::http::async_write(*c.stream, res);
+        });
+
+        router.use(root + "/api/auth/", [&](brb::Context &c) -> boost::asio::awaitable<void> {
+            auto auth = c.req()[brb::http::field::authorization];
+            if (!auth.starts_with("Bearer "))
+                throw rama::Error{.message = "unauthorized", .status = (int)brb::http::status::unauthorized};
+
+            // TODO: just for testing
+            auto token = auth.substr(7);
+            if (token == "admin") {
+                c.set("username", std::string("admin"));
+            } else {
+                auto [username, error] = jwt.decode(token);
+                if (!error.empty())
+                    throw rama::Error{.message = error, .status = (int)brb::http::status::unauthorized};
+
+                c.set("username", username);
+            }
+
             co_await c.next();
-        } catch (rama::Error &e) {
-            // api error
-            auto &res = c.response_string();
-            res.result(e.status);
-            res.body() = cpx::yy_json::dump(e);
-        } catch (cpx::serde::error &e) {
-            // json parsing error
-            fmt::println("serde::error: {}", e.what());
-            res.result(brb::http::status::bad_request);
-            res.body() = "null";
-        } catch (boost::system::system_error &) {
-            throw;
-        } catch (std::invalid_argument &e) {
-            fmt::println("std::invalid_argument: {}", e.what());
-            rama::Error error{e.what(), (int)brb::http::status::bad_request};
-            res.result(brb::http::status::bad_request);
-            res.body() = "null";
-        } catch (std::exception &e) {
-            fmt::println("std::exception: {}", e.what());
-            rama::Error error{e.what()};
-            res.result(brb::http::status::internal_server_error);
-            res.body() = "null";
-        }
+        });
 
-        res.set(brb::http::field::content_type, "application/json");
-        res.prepare_payload();
-        co_await brb::http::async_write(*c.stream, res);
-    });
+        router.route("POST " + root + "/api/login", [&](brb::Context &c) -> brb::awaitable<void> {
+            // TODO: handle admin accounts
 
-    router.use("/api/auth/", [&](brb::Context &c) -> boost::asio::awaitable<void> {
-        auto auth = c.req()[brb::http::field::authorization];
-        if (!auth.starts_with("Bearer "))
-            throw rama::Error{.message = "unauthorized", .status = (int)brb::http::status::unauthorized};
+            auto &body = c.parser_string().get().body();
 
-        // TODO: just for testing
-        auto token = auth.substr(7);
-        if (token == "admin") {
-            c.set("username", std::string("admin"));
-        } else {
-            auto [username, error] = jwt.decode(token);
-            if (!error.empty())
-                throw rama::Error{.message = error, .status = (int)brb::http::status::unauthorized};
+            std::string username;
+            std::string password;
 
-            c.set("username", username);
-        }
+            std::tuple req = {
+                cpx::field_ref(username) = "username",
+                cpx::field_ref(password) = "password",
+            };
+            cpx::yy_json::parse(body, req);
 
-        co_await c.next();
-    });
+            if (password != "ramashinta") {
+                throw rama::Error{"invalid password", 401};
+            }
 
-    router.route("POST /api/login", [&](brb::Context &c) -> brb::awaitable<void> {
-        // TODO: handle admin accounts
+            auto token                 = jwt.encode(username);
+            c.response_string().body() = cpx::yy_json::dump(std::tuple{cpx::field_ref(token) = "token"});
 
-        auto &body = c.parser_string().get().body();
-
-        std::string username;
-        std::string password;
-
-        std::tuple req = {
-            cpx::field_ref(username) = "username",
-            cpx::field_ref(password) = "password",
-        };
-        cpx::yy_json::parse(body, req);
-
-        if (password != "ramashinta") {
-            throw rama::Error{"invalid password", 401};
-        }
-
-        auto token                 = jwt.encode(username);
-        c.response_string().body() = cpx::yy_json::dump(std::tuple{cpx::field_ref(token) = "token"});
-
-        fmt::println("{}: logged in", username);
-        co_return;
-    });
-
-    router.route("POST /api/auth/images", [&](brb::Context &c) -> brb::awaitable<void> {
-        fmt::println("{}: upload image", c.get<std::string>("username"));
-
-        const auto content_type = c.req()[brb::http::field::content_type];
-
-        std::unordered_map<std::string_view, std::string_view> mime_extensions{
-            {"image/jpeg", ".jpg" },
-            {"image/png",  ".png" },
-            {"image/webp", ".webp"},
-            {"image/gif",  ".gif" },
-            {"image/bmp",  ".bmp" },
-        };
-
-        const auto it = mime_extensions.find(content_type);
-        if (it == mime_extensions.end()) {
-            c.res().result(brb::http::status::bad_request);
+            log("{}: logged in", username);
             co_return;
-        }
+        });
 
-        const auto filename = fmt::format("{:%Y-%m-%d_%H-%M-%S}{}", std::chrono::system_clock::now(), it->second);
-        const auto filedir  = args.working_dir + "/static/assets/images/";
-        const auto filepath = filedir + filename;
-        const auto url      = "/assets/images/" + filename;
+        router.route("POST " + root + "/api/auth/images", [&](brb::Context &c) -> brb::awaitable<void> {
+            log("{}: upload image", c.get<std::string>("username"));
 
-        std::filesystem::create_directories(filedir);
+            const auto content_type = c.req()[brb::http::field::content_type];
 
-        std::ofstream ofs(filepath);
-        if (!ofs) {
-            c.res().result(brb::http::status::internal_server_error);
-            co_return;
-        }
+            std::unordered_map<std::string_view, std::string_view> mime_extensions{
+                {"image/jpeg", ".jpg" },
+                {"image/png",  ".png" },
+                {"image/webp", ".webp"},
+                {"image/gif",  ".gif" },
+                {"image/bmp",  ".bmp" },
+            };
 
-        auto &body = c.parser_string().get().body();
-        ofs.write(body.data(), body.size());
-        if (!ofs) {
-            c.res().result(brb::http::status::internal_server_error);
-            co_return;
-        }
-
-        std::tuple fields          = {cpx::field_ref(url) = "url"};
-        c.response_string().body() = cpx::yy_json::dump(fields);
-        co_return;
-    });
-
-    router.route("POST /api/auth/tables", [&](brb::Context &c) -> brb::awaitable<void> {
-        fmt::println("{}: update table", c.get<std::string>("username"));
-
-        const auto content_type = c.req()[brb::http::field::content_type];
-        if (!content_type.starts_with("text/csv")) {
-            c.res().result(brb::http::status::bad_request);
-            co_return;
-        }
-
-        const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
-        const auto filedir  = args.working_dir + "/static/assets/tables/";
-        const auto filepath = filedir + filename;
-        const auto url      = "/assets/tables/" + filename;
-
-        std::filesystem::create_directories(filedir);
-
-        std::ofstream ofs(filename);
-        if (!ofs) {
-            c.res().result(brb::http::status::internal_server_error);
-            co_return;
-        }
-
-        auto &body = c.parser_string().get().body();
-        ofs.write(body.data(), body.size());
-        if (!ofs) {
-            c.res().result(brb::http::status::internal_server_error);
-            co_return;
-        }
-
-        std::tuple fields          = {cpx::field_ref(url) = "url"};
-        c.response_string().body() = cpx::yy_json::dump(fields);
-
-        boost::asio::co_spawn(
-            io,
-            [&app, csv = filepath]() -> brb::awaitable<void> {
-                app.load_products_csv(csv);
+            const auto it = mime_extensions.find(content_type);
+            if (it == mime_extensions.end()) {
+                c.res().result(brb::http::status::bad_request);
                 co_return;
-            },
-            boost::asio::detached
-        );
-        co_return;
-    });
+            }
 
-    router.route("POST /api/auth/sync", [&](brb::Context &c) -> brb::awaitable<void> {
-        fmt::println("{}: sync table", c.get<std::string>("username"));
+            const auto filename = fmt::format("{:%Y-%m-%d_%H-%M-%S}{}", std::chrono::system_clock::now(), it->second);
+            const auto filedir  = args.working_dir + "/static" + root + "/assets/images/";
+            const auto filepath = filedir + filename;
+            const auto url      = root + "/assets/images/" + filename;
 
-        std::string file_id = "117Mf8b2LgeNBseN5uJyxa5yFL_Hha6T9tGMdZRcCxzI";
-        std::string url     = "https://docs.google.com/spreadsheets/d/" + file_id + "/export?format=csv";
+            std::filesystem::create_directories(filedir);
 
-        const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
-        const auto filedir  = args.working_dir + "/static/assets/tables/";
-        const auto filepath = filedir + filename;
+            std::ofstream ofs(filepath);
+            if (!ofs) {
+                c.res().result(brb::http::status::internal_server_error);
+                co_return;
+            }
 
-        std::filesystem::create_directories(filedir);
+            auto &body = c.parser_string().get().body();
+            ofs.write(body.data(), body.size());
+            if (!ofs) {
+                c.res().result(brb::http::status::internal_server_error);
+                co_return;
+            }
 
-        // Use -L to tell curl to follow Google's 302 redirects automatically
-        std::vector<std::string> args = {
-            "curl",
-            "-s", // Silent mode (hides progress bar)
-            "-L", // Follow redirects
-            url,
-            "-o",
-            filepath // Output directly to local file
-        };
+            std::tuple fields          = {cpx::field_ref(url) = "url"};
+            c.response_string().body() = cpx::yy_json::dump(fields);
+            co_return;
+        });
 
-        // reproc::options configures redirect behavior, working directory, etc.
-        reproc::options options;
+        router.route("POST " + root + "/api/auth/tables", [&](brb::Context &c) -> brb::awaitable<void> {
+            log("{}: update table", c.get<std::string>("username"));
 
-        // reproc::run starts the process and blocks until completion
-        auto [status, ec] = reproc::run(args, options);
+            const auto content_type = c.req()[brb::http::field::content_type];
+            if (!content_type.starts_with("text/csv")) {
+                c.res().result(brb::http::status::bad_request);
+                co_return;
+            }
 
-        if (ec) {
-            fmt::println("{}: sync table: {}", c.get<std::string>("username"), ec.message());
-            throw rama::Error{ec.message()};
-        }
+            const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
+            const auto filedir  = args.working_dir + "/static" + root + "/assets/tables/";
+            const auto filepath = filedir + filename;
+            const auto url      = root + "/assets/tables/" + filename;
 
-        if (status != 0) {
-            fmt::println("{}: sync table: {}", c.get<std::string>("username"), status);
-            throw rama::Error{"curl failed with exit code: " + std::to_string(status)};
-        }
+            std::filesystem::create_directories(filedir);
 
-        app.load_products_csv(filepath);
-        co_return;
-    });
+            std::ofstream ofs(filename);
+            if (!ofs) {
+                c.res().result(brb::http::status::internal_server_error);
+                co_return;
+            }
 
-    router.route("GET /api/products", [&](brb::Context &c) -> brb::awaitable<void> {
-        auto &res = c.response_string();
+            auto &body = c.parser_string().get().body();
+            ofs.write(body.data(), body.size());
+            if (!ofs) {
+                c.res().result(brb::http::status::internal_server_error);
+                co_return;
+            }
 
-        const auto etag = c.req()[brb::http::field::if_none_match];
-        if (!etag.empty() && app.products_etag == etag) {
+            std::tuple fields          = {cpx::field_ref(url) = "url"};
+            c.response_string().body() = cpx::yy_json::dump(fields);
+
+            boost::asio::co_spawn(
+                io,
+                [&app, csv = filepath]() -> brb::awaitable<void> {
+                    app.load_products_csv(csv);
+                    co_return;
+                },
+                boost::asio::detached
+            );
+            co_return;
+        });
+
+        router.route("POST " + root + "/api/auth/sync", [&](brb::Context &c) -> brb::awaitable<void> {
+            log("{}: sync table", c.get<std::string>("username"));
+
+            std::string file_id = "117Mf8b2LgeNBseN5uJyxa5yFL_Hha6T9tGMdZRcCxzI";
+            std::string url     = "https://docs.google.com/spreadsheets/d/" + file_id + "/export?format=csv";
+
+            const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
+            const auto filedir  = args.working_dir + "/static" + root + "/assets/tables/";
+            const auto filepath = filedir + filename;
+
+            std::filesystem::create_directories(filedir);
+
+            // Use -L to tell curl to follow Google's 302 redirects automatically
+            std::vector<std::string> args = {
+                "curl",
+                "-s", // Silent mode (hides progress bar)
+                "-L", // Follow redirects
+                url,
+                "-o",
+                filepath // Output directly to local file
+            };
+
+            // reproc::options configures redirect behavior, working directory, etc.
+            reproc::options options;
+
+            // reproc::run starts the process and blocks until completion
+            auto [status, ec] = reproc::run(args, options);
+
+            if (ec) {
+                log("{}: sync table: {}", c.get<std::string>("username"), ec.message());
+                throw rama::Error{ec.message()};
+            }
+
+            if (status != 0) {
+                log("{}: sync table: {}", c.get<std::string>("username"), status);
+                throw rama::Error{"curl failed with exit code: " + std::to_string(status)};
+            }
+
+            app.load_products_csv(filepath);
+            co_return;
+        });
+
+        router.route("GET " + root + "/api/products", [&](brb::Context &c) -> brb::awaitable<void> {
+            auto &res = c.response_string();
+
+            const auto etag = c.req()[brb::http::field::if_none_match];
+            {
+                std::lock_guard<std::mutex> lock(app.mtx);
+
+                if (!etag.empty() && app.products_etag == etag) {
+                    res.set(brb::http::field::etag, app.products_etag);
+                    res.result(brb::http::status::not_modified);
+                    co_return;
+                }
+            }
+
+            const auto products = app.get_products();
+
+            res.body() = cpx::yy_json::dump(products);
             res.set(brb::http::field::etag, app.products_etag);
-            res.result(brb::http::status::not_modified);
-            co_return;
-        }
+        });
 
-        const auto products = app.get_products();
+        router.route("GET " + root + "/api/categories", [&](brb::Context &c) -> brb::awaitable<void> {
+            auto &res = c.response_string();
 
-        res.body() = cpx::yy_json::dump(products);
-        res.set(brb::http::field::etag, app.products_etag);
-    });
+            const auto etag = c.req()[brb::http::field::if_none_match];
+            {
+                std::lock_guard<std::mutex> lock(app.mtx);
 
-    router.route("GET /api/categories", [&](brb::Context &c) -> brb::awaitable<void> {
-        auto &res = c.response_string();
+                if (!etag.empty() && app.categories_etag == etag) {
+                    res.set(brb::http::field::etag, app.categories_etag);
+                    res.result(brb::http::status::not_modified);
+                    co_return;
+                }
+            }
 
-        const auto etag = c.req()[brb::http::field::if_none_match];
-        if (!etag.empty() && app.categories_etag == etag) {
+            const auto categories = app.get_categories();
+
+            res.body() = cpx::yy_json::dump(categories);
             res.set(brb::http::field::etag, app.categories_etag);
-            res.result(brb::http::status::not_modified);
             co_return;
-        }
+        });
 
-        const auto categories = app.get_categories();
+        router.route("GET " + root + "/api/auth/orders", [&](brb::Context &c) -> brb::awaitable<void> {
+            auto &res = c.response_string();
 
-        res.body() = cpx::yy_json::dump(categories);
-        res.set(brb::http::field::etag, app.categories_etag);
-        co_return;
-    });
+            const auto etag = c.req()[brb::http::field::if_none_match];
+            {
+                std::lock_guard<std::mutex> lock(app.mtx);
 
-    router.route("GET /api/auth/orders", [&](brb::Context &c) -> brb::awaitable<void> {
-        auto &res = c.response_string();
+                if (!etag.empty() && app.orders_etag == etag) {
+                    res.set(brb::http::field::etag, app.orders_etag);
+                    res.result(brb::http::status::not_modified);
+                    co_return;
+                }
+            }
 
-        const auto etag = c.req()[brb::http::field::if_none_match];
-        if (!etag.empty() && app.orders_etag == etag) {
+            const auto orders = app.get_orders();
+
+            res.body() = cpx::yy_json::dump(orders);
             res.set(brb::http::field::etag, app.orders_etag);
-            res.result(brb::http::status::not_modified);
+
+            log("{}: list orders", c.get<std::string>("username"));
+        });
+
+        router.route("GET " + root + "/api/order", [&](brb::Context &c) -> brb::awaitable<void> {
+            const auto id              = c.url.params().get_or("id", "");
+            const auto order           = app.get_order(id);
+            c.response_string().body() = cpx::yy_json::dump(order);
             co_return;
-        }
+        });
 
-        const auto orders = app.get_orders();
+        router.route("POST " + root + "/api/auth/products", [&](brb::Context &c) -> brb::awaitable<void> {
+            log("{}: create product", c.get<std::string>("username"));
 
-        res.body() = cpx::yy_json::dump(orders);
-        res.set(brb::http::field::etag, app.orders_etag);
+            auto &body    = c.parser_string().get().body();
+            auto  product = cpx::yy_json::parse<rama::Product>(body);
 
-        fmt::println("{}: list orders", c.get<std::string>("username"));
-    });
+            app.add_product(product);
+            log("{}: modify product.id={:?}", c.get<std::string>("username"), product.id);
+            co_return;
+        });
 
-    router.route("GET /api/order", [&](brb::Context &c) -> brb::awaitable<void> {
-        const auto id              = c.url.params().get_or("id", "");
-        const auto order           = app.get_order(id);
-        c.response_string().body() = cpx::yy_json::dump(order);
-        co_return;
-    });
+        router.route("POST " + root + "/api/auth/categories", [&](brb::Context &c) -> brb::awaitable<void> {
+            auto &body     = c.parser_string().get().body();
+            auto  category = cpx::yy_json::parse<rama::Category>(body);
 
-    router.route("POST /api/auth/products", [&](brb::Context &c) -> brb::awaitable<void> {
-        fmt::println("{}: create product", c.get<std::string>("username"));
+            app.add_category(category);
+            log("{}: modify category.id={:?}", c.get<std::string>("username"), category.id);
+            co_return;
+        });
 
-        auto &body    = c.parser_string().get().body();
-        auto  product = cpx::yy_json::parse<rama::Product>(body);
+        router.route("POST " + root + "/api/orders", [&](brb::Context &c) -> brb::awaitable<void> {
+            auto &body  = c.parser_string().get().body();
+            auto  order = cpx::yy_json::parse<rama::Order>(body);
 
-        app.add_product(product);
-        fmt::println("{}: modify product.id={:?}", c.get<std::string>("username"), product.id);
-        co_return;
-    });
+            app.add_order(order);
 
-    router.route("POST /api/auth/categories", [&](brb::Context &c) -> brb::awaitable<void> {
-        auto &body     = c.parser_string().get().body();
-        auto  category = cpx::yy_json::parse<rama::Category>(body);
+            std::tuple res             = {cpx::field_ref(order.id) = "id"};
+            c.response_string().body() = cpx::yy_json::dump(res);
+            co_return;
+        });
 
-        app.add_category(category);
-        fmt::println("{}: modify category.id={:?}", c.get<std::string>("username"), category.id);
-        co_return;
-    });
+        router.route("POST " + root + "/api/auth/orders", [&](brb::Context &c) -> brb::awaitable<void> {
+            auto &body  = c.parser_string().get().body();
+            auto  order = cpx::yy_json::parse<rama::Order>(body);
 
-    router.route("POST /api/orders", [&](brb::Context &c) -> brb::awaitable<void> {
-        auto &body  = c.parser_string().get().body();
-        auto  order = cpx::yy_json::parse<rama::Order>(body);
+            app.add_order(order);
 
-        app.add_order(order);
+            std::tuple res             = {cpx::field_ref(order.id) = "id"};
+            c.response_string().body() = cpx::yy_json::dump(res);
 
-        std::tuple res             = {cpx::field_ref(order.id) = "id"};
-        c.response_string().body() = cpx::yy_json::dump(res);
-        co_return;
-    });
+            log("{}: modify order order.id={:?}", c.get<std::string>("username"), order.id);
+            co_return;
+        });
 
-    router.route("POST /api/auth/orders", [&](brb::Context &c) -> brb::awaitable<void> {
-        auto &body  = c.parser_string().get().body();
-        auto  order = cpx::yy_json::parse<rama::Order>(body);
+        router.route("DELETE " + root + "/api/auth/products", [&](brb::Context &c) -> brb::awaitable<void> {
+            std::string id;
+            std::tuple  req = {cpx::field_ref(id) = "id"};
 
-        app.add_order(order);
+            cpx::yy_json::parse(c.parser_string().get().body(), req);
 
-        std::tuple res             = {cpx::field_ref(order.id) = "id"};
-        c.response_string().body() = cpx::yy_json::dump(res);
+            app.delete_product(id);
+            log("{}: delete category id={:?}", c.get<std::string>("username"), id);
+            co_return;
+        });
 
-        fmt::println("{}: modify order order.id={:?}", c.get<std::string>("username"), order.id);
-        co_return;
-    });
+        router.route("DELETE " + root + "/api/auth/categories", [&](brb::Context &c) -> brb::awaitable<void> {
+            std::string id;
+            std::tuple  req = {cpx::field_ref(id) = "id"};
 
-    router.route("DELETE /api/auth/products", [&](brb::Context &c) -> brb::awaitable<void> {
-        std::string id;
-        std::tuple  req = {cpx::field_ref(id) = "id"};
+            cpx::yy_json::parse(c.parser_string().get().body(), req);
 
-        cpx::yy_json::parse(c.parser_string().get().body(), req);
+            app.delete_category(id);
+            log("{}: delete category id={:?}", c.get<std::string>("username"), id);
+            co_return;
+        });
 
-        app.delete_product(id);
-        fmt::println("{}: delete category id={:?}", c.get<std::string>("username"), id);
-        co_return;
-    });
+        router.route("DELETE " + root + "/api/auth/orders", [&](brb::Context &c) -> brb::awaitable<void> {
+            std::string id;
+            std::tuple  req = {cpx::field_ref(id) = "id"};
 
-    router.route("DELETE /api/auth/categories", [&](brb::Context &c) -> brb::awaitable<void> {
-        std::string id;
-        std::tuple  req = {cpx::field_ref(id) = "id"};
+            cpx::yy_json::parse(c.parser_string().get().body(), req);
 
-        cpx::yy_json::parse(c.parser_string().get().body(), req);
-
-        app.delete_category(id);
-        fmt::println("{}: delete category id={:?}", c.get<std::string>("username"), id);
-        co_return;
-    });
-
-    router.route("DELETE /api/auth/orders", [&](brb::Context &c) -> brb::awaitable<void> {
-        std::string id;
-        std::tuple  req = {cpx::field_ref(id) = "id"};
-
-        cpx::yy_json::parse(c.parser_string().get().body(), req);
-
-        app.delete_order(id);
-        fmt::println("{}: delete order id={:?}", c.get<std::string>("username"), id);
-        co_return;
-    });
+            app.delete_order(id);
+            log("{}: delete order id={:?}", c.get<std::string>("username"), id);
+            co_return;
+        });
+    }
 
     try {
         const auto address  = boost::asio::ip::make_address(args.host);
@@ -433,7 +462,7 @@ int main(int argc, char **argv) {
         acceptor.bind(endpoint);
         acceptor.listen(boost::asio::socket_base::max_listen_connections);
     } catch (boost::system::system_error &e) {
-        fmt::println(stderr, "Failed to start server {}:{}: {}", args.host, args.port, e.code().message());
+        log("Failed to start server {}:{}: {}", args.host, args.port, e.code().message());
         exit(1);
     }
 
@@ -451,7 +480,7 @@ int main(int argc, char **argv) {
             try {
                 stream = std::make_shared<boost::beast::tcp_stream>(co_await acceptor.async_accept());
             } catch (boost::system::system_error &e) {
-                fmt::println("Acceptor stopped: {}", e.code().message());
+                log("Acceptor stopped: {}", e.code().message());
                 break;
             }
             boost::asio::co_spawn(io, work(stream), boost::asio::detached);
@@ -475,7 +504,7 @@ int main(int argc, char **argv) {
     boost::asio::co_spawn(io, async_main(), boost::asio::detached);
     boost::asio::co_spawn(io, async_cancel(), boost::asio::detached);
 
-    fmt::println("Server is running on http://{}:{}", args.host, args.port);
+    log("Server is running on http://{}:{}", args.host, args.port);
 
     std::vector<std::thread> ts;
     ts.reserve(args.parallel);
