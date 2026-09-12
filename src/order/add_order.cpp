@@ -6,6 +6,7 @@ module;
 #include <mutex>
 
 module rama;
+import fmt;
 import rama.error;
 
 void rama::App::add_order(Order &o) {
@@ -150,4 +151,10 @@ returning orders.id
 
         db(stmt);
     }
+
+    timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    auto hash   = XXH3_64bits(&ts, sizeof(ts));
+    orders_etag = fmt::format("\"{:016x}\"", hash);
 }

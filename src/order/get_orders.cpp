@@ -4,8 +4,10 @@ module;
 #include <vector>
 #include <tuple>
 #include <mutex>
+#include <xxhash.h>
 
 module rama;
+import fmt;
 import cpx.sql;
 
 auto rama::App::get_orders() -> std::vector<Order> {
@@ -59,5 +61,12 @@ auto rama::App::get_orders() -> std::vector<Order> {
         res.emplace_back(std::move(o));
     }
 
+    if (orders_etag.empty()) {
+        timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+
+        auto hash   = XXH3_64bits(&ts, sizeof(ts));
+        orders_etag = fmt::format("\"{:016x}\"", hash);
+    }
     return res;
 }

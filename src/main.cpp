@@ -3,6 +3,7 @@
 #include <boost/url.hpp>
 #include <filesystem>
 #include <fstream>
+#include <reproc++/run.hpp>
 
 import brb;
 import fmt;
@@ -57,19 +58,6 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    try {
-        const auto address  = boost::asio::ip::make_address(args.host);
-        const auto endpoint = boost::asio::ip::tcp::endpoint(address, args.port);
-
-        acceptor.open(endpoint.protocol());
-        acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
-        acceptor.bind(endpoint);
-        acceptor.listen(boost::asio::socket_base::max_listen_connections);
-    } catch (boost::system::system_error &e) {
-        fmt::println(stderr, "Failed to start server {}:{}: {}", args.host, args.port, e.code().message());
-        exit(1);
-    }
-
     router.mount("/", "static");
 
     router.use("/", [](brb::Context &c) -> brb::awaitable<void> {
@@ -110,6 +98,11 @@ int main(int argc, char **argv) {
             res.body() = "null";
         } catch (boost::system::system_error &) {
             throw;
+        } catch (std::invalid_argument &e) {
+            fmt::println("std::invalid_argument: {}", e.what());
+            rama::Error error{e.what(), (int)brb::http::status::bad_request};
+            res.result(brb::http::status::bad_request);
+            res.body() = "null";
         } catch (std::exception &e) {
             fmt::println("std::exception: {}", e.what());
             rama::Error error{e.what()};
@@ -187,7 +180,7 @@ int main(int argc, char **argv) {
         }
 
         const auto filename = fmt::format("{:%Y-%m-%d_%H-%M-%S}{}", std::chrono::system_clock::now(), it->second);
-        const auto filedir  = args.working_dir + "/assets/images/";
+        const auto filedir  = args.working_dir + "/static/assets/images/";
         const auto filepath = filedir + filename;
         const auto url      = "/assets/images/" + filename;
 
@@ -220,8 +213,8 @@ int main(int argc, char **argv) {
             co_return;
         }
 
-        const auto filename = fmt::format("{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
-        const auto filedir  = args.working_dir + "/assets/tables/";
+        const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
+        const auto filedir  = args.working_dir + "/static/assets/tables/";
         const auto filepath = filedir + filename;
         const auto url      = "/assets/tables/" + filename;
 
@@ -254,24 +247,97 @@ int main(int argc, char **argv) {
         co_return;
     });
 
-    router.route("GET /api/products", [&](brb::Context &c) -> brb::awaitable<void> {
-        const auto products        = app.get_products();
-        c.response_string().body() = cpx::yy_json::dump(products);
+    router.route("POST /api/auth/sync", [&](brb::Context &c) -> brb::awaitable<void> {
+        fmt::println("{}: sync table", c.get<std::string>("username"));
+
+        std::string file_id = "117Mf8b2LgeNBseN5uJyxa5yFL_Hha6T9tGMdZRcCxzI";
+        std::string url     = "https://docs.google.com/spreadsheets/d/" + file_id + "/export?format=csv";
+
+        const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
+        const auto filedir  = args.working_dir + "/static/assets/tables/";
+        const auto filepath = filedir + filename;
+
+        std::filesystem::create_directories(filedir);
+
+        // Use -L to tell curl to follow Google's 302 redirects automatically
+        std::vector<std::string> args = {
+            "curl",
+            "-s", // Silent mode (hides progress bar)
+            "-L", // Follow redirects
+            url,
+            "-o",
+            filepath // Output directly to local file
+        };
+
+        // reproc::options configures redirect behavior, working directory, etc.
+        reproc::options options;
+
+        // reproc::run starts the process and blocks until completion
+        auto [status, ec] = reproc::run(args, options);
+
+        if (ec) {
+            fmt::println("{}: sync table: {}", c.get<std::string>("username"), ec.message());
+            throw rama::Error{ec.message()};
+        }
+
+        if (status != 0) {
+            fmt::println("{}: sync table: {}", c.get<std::string>("username"), status);
+            throw rama::Error{"curl failed with exit code: " + std::to_string(status)};
+        }
+
+        app.load_products_csv(filepath);
         co_return;
     });
 
+    router.route("GET /api/products", [&](brb::Context &c) -> brb::awaitable<void> {
+        auto &res = c.response_string();
+
+        const auto etag = c.req()[brb::http::field::if_none_match];
+        if (!etag.empty() && app.products_etag == etag) {
+            res.set(brb::http::field::etag, app.products_etag);
+            res.result(brb::http::status::not_modified);
+            co_return;
+        }
+
+        const auto products = app.get_products();
+
+        res.body() = cpx::yy_json::dump(products);
+        res.set(brb::http::field::etag, app.products_etag);
+    });
+
     router.route("GET /api/categories", [&](brb::Context &c) -> brb::awaitable<void> {
-        const auto categories      = app.get_categories();
-        c.response_string().body() = cpx::yy_json::dump(categories);
+        auto &res = c.response_string();
+
+        const auto etag = c.req()[brb::http::field::if_none_match];
+        if (!etag.empty() && app.categories_etag == etag) {
+            res.set(brb::http::field::etag, app.categories_etag);
+            res.result(brb::http::status::not_modified);
+            co_return;
+        }
+
+        const auto categories = app.get_categories();
+
+        res.body() = cpx::yy_json::dump(categories);
+        res.set(brb::http::field::etag, app.categories_etag);
         co_return;
     });
 
     router.route("GET /api/auth/orders", [&](brb::Context &c) -> brb::awaitable<void> {
-        const auto orders          = app.get_orders();
-        c.response_string().body() = cpx::yy_json::dump(orders);
+        auto &res = c.response_string();
+
+        const auto etag = c.req()[brb::http::field::if_none_match];
+        if (!etag.empty() && app.orders_etag == etag) {
+            res.set(brb::http::field::etag, app.orders_etag);
+            res.result(brb::http::status::not_modified);
+            co_return;
+        }
+
+        const auto orders = app.get_orders();
+
+        res.body() = cpx::yy_json::dump(orders);
+        res.set(brb::http::field::etag, app.orders_etag);
 
         fmt::println("{}: list orders", c.get<std::string>("username"));
-        co_return;
     });
 
     router.route("GET /api/order", [&](brb::Context &c) -> brb::awaitable<void> {
@@ -357,6 +423,19 @@ int main(int argc, char **argv) {
         fmt::println("{}: delete order id={:?}", c.get<std::string>("username"), id);
         co_return;
     });
+
+    try {
+        const auto address  = boost::asio::ip::make_address(args.host);
+        const auto endpoint = boost::asio::ip::tcp::endpoint(address, args.port);
+
+        acceptor.open(endpoint.protocol());
+        acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+        acceptor.bind(endpoint);
+        acceptor.listen(boost::asio::socket_base::max_listen_connections);
+    } catch (boost::system::system_error &e) {
+        fmt::println(stderr, "Failed to start server {}:{}: {}", args.host, args.port, e.code().message());
+        exit(1);
+    }
 
     auto work = [&](std::shared_ptr<boost::beast::tcp_stream> stream) -> boost::asio::awaitable<void> {
         while (is_running) {

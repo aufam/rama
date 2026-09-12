@@ -2,8 +2,10 @@ module;
 
 #include <string>
 #include <csv.hpp>
+#include <xxhash.h>
 
 module rama;
+import cpx;
 import rama.error;
 import fmt;
 
@@ -19,6 +21,14 @@ void rama::App::load_products_csv(const std::string &path) {
     std::lock_guard<std::mutex> lock(mtx);
 
     csv::CSVReader reader(path);
+
+    const cpx::sql::Statement<> begin_transaction{"begin transaction"};
+    const cpx::sql::Statement<> commit{"commit"};
+    const cpx::sql::Statement<> roleback{"roleback"};
+
+    bool ok = false;
+    db(begin_transaction);
+    cpx::defer _ = [&]() { db(ok ? commit : roleback); };
 
     for (auto row : reader) {
         const auto size = row.size();
@@ -100,4 +110,12 @@ void rama::App::load_products_csv(const std::string &path) {
 
         db(stmt);
     }
+
+    ok = true;
+
+    timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    auto hash     = XXH3_64bits(&ts, sizeof(ts));
+    products_etag = fmt::format("\"{:016x}\"", hash);
 }

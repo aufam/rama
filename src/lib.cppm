@@ -22,6 +22,10 @@ struct rama::App {
     cpx::sqlite3::Connection db;
     std::mutex               mtx;
 
+    std::string products_etag;
+    std::string categories_etag;
+    std::string orders_etag;
+
     explicit App(const std::string &db)
         : db(db) {}
 

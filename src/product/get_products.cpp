@@ -4,8 +4,10 @@ module;
 #include <vector>
 #include <tuple>
 #include <mutex>
+#include <xxhash.h>
 
 module rama;
+import fmt;
 import cpx.sql;
 
 auto rama::App::get_products() -> std::vector<Product> {
@@ -45,6 +47,14 @@ auto rama::App::get_products() -> std::vector<Product> {
         Product p;
         std::tie(p.id, p.name, p.barcode, p.price, p.discount, p.sale_price, p.category, p.unit, p.image) = row.get();
         res.emplace_back(std::move(p));
+    }
+
+    if (products_etag.empty()) {
+        timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+
+        auto hash     = XXH3_64bits(&ts, sizeof(ts));
+        products_etag = fmt::format("\"{:016x}\"", hash);
     }
 
     return res;

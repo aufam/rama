@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = new FormData(form);
 
         try {
-          const res = await fetch('/api/login', {
+          const res = await fetch('api/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -315,14 +315,14 @@ function populateCategoryDropdowns() {
     filterSelect.innerHTML = '<option value="all">Semua Kategori</option>' +
       adminCategories
         .filter(c => c.id !== 'all')
-        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .map(c => `<option value="${c.id}">${c.id}</option>`)
         .join('');
   }
 
   if (formCatSelect) {
     formCatSelect.innerHTML = adminCategories
       .filter(c => c.id !== 'all')
-      .map(c => `<option value="${c.id}">${c.name}</option>`)
+      .map(c => `<option value="${c.id}">${c.id}</option>`)
       .join('');
   }
 }
@@ -388,7 +388,8 @@ function renderTable() {
 
   tbody.innerHTML = filtered.map(p => {
     const catObj = adminCategories.find(c => c.id === p.category);
-    const catName = catObj ? catObj.name : p.category;
+    // const catName = catObj ? catObj.name : p.category;
+    const catName = p.category;
     const catIcon = catObj ? catObj.icon : 'fa-box';
 
     const thumbHtml = p.image

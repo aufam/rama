@@ -11,3 +11,4 @@ cpx = { version = "0.1.0", features = ["json", "toml", "sqlite", "fmt", "cli"] }
 csv-parser = { version = "5.3.0" }
 xxhash = { version = "0.8.3" }
 jwt = { version = "0.7.2" }
+reproc = { version = "14.2.7" }

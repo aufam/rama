@@ -11,3 +11,5 @@ __pycache__
 !.clang-format
 !.tombi.toml
 compile_commands.json
+/static/assets/
+/static/sekuro/

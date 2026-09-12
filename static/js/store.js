@@ -280,7 +280,7 @@ const Store = {
       throw new Error('Ukuran gambar maksimal 3MB.');
     }
 
-    const response = await fetch('/api/auth/images', {
+    const response = await fetch('api/auth/images', {
       headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}` },
       method: 'POST',
       body: file,
@@ -333,7 +333,7 @@ const Store = {
    */
 
   async getCategories() {
-    const response = await fetch("/api/categories");
+    const response = await fetch("api/categories");
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -355,7 +355,7 @@ const Store = {
       return raw ? JSON.parse(raw) : [];
     }
 
-    const response = await fetch('/api/products');
+    const response = await fetch('api/products');
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -387,7 +387,7 @@ const Store = {
       description: p.description ? p.description.trim() : ''
     };
 
-    const response = await fetch('/api/auth/products', {
+    const response = await fetch('api/auth/products', {
       headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'Content-Type': 'application/json' },
       method: 'POST',
       body: JSON.stringify(newProduct),
@@ -416,7 +416,7 @@ const Store = {
   async deleteProduct(id) {
     let products = await this.getProducts(true);
 
-    const response = await fetch('/api/auth/products', {
+    const response = await fetch('api/auth/products', {
       headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'Content-Type': 'application/json' },
       method: 'DELETE',
       body: JSON.stringify({ id: id }),
@@ -459,7 +459,7 @@ const Store = {
       return raw ? JSON.parse(raw) : [];
     }
 
-    const response = await fetch('/api/auth/orders', {
+    const response = await fetch('api/auth/orders', {
       headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}` },
     });
 
@@ -495,7 +495,7 @@ const Store = {
   async getOrderById(orderId) {
     if (!orderId) return null;
 
-    const response = await fetch(`/api/order?id=${orderId}`);
+    const response = await fetch(`api/order?id=${orderId}`);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -541,7 +541,7 @@ const Store = {
       totalPrice
     };
 
-    const response = await fetch('/api/orders', {
+    const response = await fetch('api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newOrder)
@@ -563,7 +563,7 @@ const Store = {
     order.status = newStatus;
     order.updatedAt = new Date().toISOString();
 
-    const response = await fetch('/api/auth/orders', {
+    const response = await fetch('api/auth/orders', {
       method: 'POST',
       headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(order)

@@ -20,6 +20,6 @@ struct rama::Category {
         cpx::field<&Category::id>       = "id",
         cpx::field<&Category::name>     = "name",
         cpx::field<&Category::icon>     = "icon",
-        cpx::field<&Category::priority> = "icon,skipmissing",
+        cpx::field<&Category::priority> = "priority,skipmissing",
     };
 };

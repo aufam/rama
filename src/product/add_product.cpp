@@ -3,8 +3,10 @@ module;
 #include <string>
 #include <tuple>
 #include <mutex>
+#include <xxhash.h>
 
 module rama;
+import fmt;
 import cpx.sql;
 
 void rama::App::add_product(const Product &p) {
@@ -42,4 +44,10 @@ void rama::App::add_product(const Product &p) {
     };
 
     db(stmt);
+
+    timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    auto hash     = XXH3_64bits(&ts, sizeof(ts));
+    products_etag = fmt::format("\"{:016x}\"", hash);
 }

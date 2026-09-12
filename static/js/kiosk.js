@@ -135,7 +135,7 @@ function renderCategories() {
   categoryBar.innerHTML = allCategories.map(cat => `
     <button class="cat-chip-btn ${cat.id === activeCategoryId ? 'active' : ''}" data-cat-id="${cat.id}">
       <i class="fa-solid ${cat.icon}"></i>
-      <span>${cat.name}</span>
+      <span>${cat.id}</span>
     </button>
   `).join('');
 
