@@ -238,6 +238,24 @@ int main(int argc, char **argv) {
             co_return;
         });
 
+        router.route("GET " + root + "/api/auth/tables", [&](brb::Context &c) -> brb::awaitable<void> {
+            log("{}: download table", c.get<std::string>("username"));
+
+            const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
+            const auto filedir  = args.working_dir + "/static" + root + "/assets/tables/";
+            const auto filepath = filedir + filename;
+            const auto url      = root + "/assets/tables/" + filename;
+
+            app.dump_products_csv(filepath);
+
+            auto &res = c.response_string();
+            res.result(brb::http::status::found);
+            res.set(brb::http::field::location, url);
+            res.body() = "null";
+
+            co_return;
+        });
+
         router.route("POST " + root + "/api/auth/tables", [&](brb::Context &c) -> brb::awaitable<void> {
             log("{}: update table", c.get<std::string>("username"));
 

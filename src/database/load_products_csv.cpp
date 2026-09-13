@@ -61,6 +61,9 @@ void rama::App::load_products_csv(const std::string &path) {
         if (size > 8)
             p.image = row[8].get();
 
+        if (size > 9)
+            p.description = row[8].get();
+
         if (p.category.empty())
             p.category = "uncategorized";
 
@@ -87,14 +90,16 @@ void rama::App::load_products_csv(const std::string &path) {
                 long long,        // sale_price
                 std::string_view, // category_id
                 std::string_view, // unit
-                std::string_view  // image
+                std::string_view, // image
+                std::string_view
             >,
             std::tuple<std::string_view>
         >
             stmt = {
                 .query =
-                    "insert into products (id, name, barcode, price, discount, sale_price, category_id, unit, image) "
-                    "values (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                    "insert into products (id, name, barcode, price, discount, sale_price, category_id, unit, image, "
+                    "description) "
+                    "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                     "on conflict (id) do update set "
                     "name = excluded.name, "
                     "barcode = excluded.barcode, "
@@ -105,7 +110,9 @@ void rama::App::load_products_csv(const std::string &path) {
                     "unit = case when excluded.unit != '' then excluded.unit else products.unit end, "
                     "image = case when excluded.image != '' then excluded.image else products.image end "
                     "returning products.id",
-                .params = {p.id, p.name, p.barcode, p.price, p.discount, p.sale_price, category_id, p.unit, p.image},
+                .params = {
+                           p.id, p.name, p.barcode, p.price, p.discount, p.sale_price, category_id, p.unit, p.image, p.description
+                },
         };
 
         db(stmt);

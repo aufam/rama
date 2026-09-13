@@ -95,7 +95,16 @@ void rama::App::dump_products_csv(const std::string &path) {
 
     write_csv_row(
         out,
-        {"KODE_BRG", "NAMA_BRG", "BARCODE", "HARGA SBLM DISKON", "DISC_JUAL", "HARGA SDH DISKON", "Kategori", "unit", "image"}
+        {"KODE_BRG",
+         "NAMA_BRG",
+         "BARCODE",
+         "HARGA SBLM DISKON",
+         "DISC_JUAL",
+         "HARGA SDH DISKON",
+         "KATEGORI",
+         "UNIT",
+         "GAMBAR",
+         "DESKRIPSI"}
     );
 
     auto stmt = sql::select(
@@ -107,27 +116,19 @@ void rama::App::dump_products_csv(const std::string &path) {
                     products.sale_price,
                     products.category_id,
                     products.unit,
-                    products.image
+                    products.image,
+                    products.description
     )
                     .from(products)
                     .order_by(products.name);
 
     for (auto row = db(stmt); !row.is_done(); row.next()) {
-        const auto [id, name, barcode, price, discount, sale_price, category, unit, image] = row.get();
+        const auto [id, name, barcode, price, discount, sale_price, category, unit, image, description] = row.get();
 
-        write_csv_row(
-            out,
-            {
-                id,
-                name,
-                barcode,
-                int_to_rupiah(price),
-                fmt::format("{}", discount),
-                int_to_rupiah(sale_price),
-                category,
-                unit,
-                image,
-            }
-        );
+        auto sprice    = int_to_rupiah(price);
+        auto sdiscount = fmt::format("{}", discount);
+        auto ssale     = int_to_rupiah(sale_price);
+
+        write_csv_row(out, {id, name, barcode, sprice, sdiscount, ssale, category, unit, image, description});
     }
 }
