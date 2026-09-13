@@ -39,6 +39,7 @@ struct Args {
 template <typename... Args>
 void log(fmt::format_string<Args...> fmt_str, Args &&...args) {
     fmt::println(fmt_str, std::forward<Args>(args)...);
+    std::cout.flush();
 }
 
 struct Branch {
