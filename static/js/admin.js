@@ -78,7 +78,8 @@ async function loadAdminData(local = false) {
     adminCategories = await Store.getCategories(local);
     adminProducts = await Store.getProducts(local);
     adminOrders = await Store.getOrders(local);
-    populateCategoryDropdowns();
+    if (!local)
+      populateCategoryDropdowns();
     renderStats();
     renderTable();
     renderOrdersTable();
@@ -436,8 +437,9 @@ function renderProductBatch() {
     const catName = p.category;
     const catIcon = catObj ? catObj.icon : 'fa-box';
 
-    const thumbHtml = p.image
-      ? `<img src="${p.image}" alt="${p.name}">`
+    const imageURL = Store.getProductImage(p)
+    const thumbHtml = imageURL
+      ? `<img src="${imageURL}" alt="${p.name}">`
       : `<i class="fa-solid ${catIcon}"></i>`;
 
     const discount = Number(p.discount || 0);
@@ -467,7 +469,7 @@ function renderProductBatch() {
                   <h3 class="item-name">${p.name}</h3>
                   <span class="category-badge">${catName}</span>
                 </div>
-                <span class="sku-badge"><i class="fa-solid fa-barcode"></i> <code>${p.id}</code></span>
+                <span class="sku-badge"><i class="fa-solid"></i> <code>${p.id}</code></span>
               </div>
               <p class="item-desc">${p.description || 'Tidak ada deskripsi produk.'}</p>
               <div class="item-bottom-row">
@@ -764,7 +766,7 @@ window.openOrderDetailModal = async function(orderId) {
                         <button type="button" 
                                 onclick="toggleItemBarcode('${idx}', '${barcodeValue}')"
                                 style="background: var(--gray-100, #f1f5f9); border: 1px solid var(--admin-border); border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 0.75rem;">
-                          <i class="fa-solid fa-barcode"></i>
+                          <i class="fa-solid">Show barcode</i>
                         </button>
                       ` : ''}
                     </div>

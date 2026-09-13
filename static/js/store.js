@@ -441,6 +441,11 @@ const Store = {
     return true;
   },
 
+  getProductImage(p) {
+
+    return p.image;
+  },
+
   getProductById(id) {
     const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
     const products = raw ? JSON.parse(raw) : [];

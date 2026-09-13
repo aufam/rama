@@ -202,8 +202,10 @@ function loadMoreProducts() {
 
     const icon = getCategoryIcon(p.category);
     const isOutOfStock = p.stock <= 0;
-    const thumbHtml = p.image
-      ? `<img src="${p.image}" alt="${p.name}">`
+
+    const imageURL = Store.getProductImage(p)
+    const thumbHtml = imageURL
+      ? `<img src="${imageURL}" alt="${p.name}">`
       : `<i class="fa-solid ${icon}"></i>`;
 
     const price = Number(p.price) || 0;
@@ -260,7 +262,7 @@ function loadMoreProducts() {
     </div>
   `;
   }).join('');
-  
+
   grid.insertAdjacentHTML('beforeend', html);
   renderIndex += RENDER_BATCH;
 }
@@ -288,9 +290,10 @@ function openProductDetailModal(productId) {
   const modalIcon = document.getElementById('modal-item-icon');
   const modalImg = document.getElementById('modal-item-img');
 
-  if (product.image) {
+  const imageURL = Store.getProductImage(product)
+  if (imageURL) {
     if (modalImg) {
-      modalImg.src = product.image;
+      modalImg.src = imageURL;
       modalImg.style.display = 'block';
     }
     if (modalIcon) modalIcon.style.display = 'none';
