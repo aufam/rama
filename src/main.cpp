@@ -38,7 +38,6 @@ struct Args {
 
 template <typename... Args>
 void log(fmt::format_string<Args...> fmt_str, Args &&...args) {
-    fmt::print("{:%Y-%m-%d %H:%M:%S} ", std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now()));
     fmt::println(fmt_str, std::forward<Args>(args)...);
 }
 
