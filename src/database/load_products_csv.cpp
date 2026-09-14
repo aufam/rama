@@ -25,10 +25,15 @@ void rama::App::load_products_csv(const std::string &path) {
     const cpx::sql::Statement<> begin_transaction{"begin transaction"};
     const cpx::sql::Statement<> commit{"commit"};
     const cpx::sql::Statement<> roleback{"roleback"};
+    const cpx::sql::Statement<> delete_products{"delete from products"};
+    const cpx::sql::Statement<> delete_categories{"delete from categories"};
 
     bool ok = false;
     db(begin_transaction);
     cpx::defer _ = [&]() { db(ok ? commit : roleback); };
+
+    db(delete_products);
+    db(delete_categories);
 
     for (auto row : reader) {
         const auto size = row.size();
@@ -125,4 +130,8 @@ void rama::App::load_products_csv(const std::string &path) {
 
     auto hash     = XXH3_64bits(&ts, sizeof(ts));
     products_etag = fmt::format("\"{:016x}\"", hash);
+
+    clock_gettime(CLOCK_REALTIME, &ts);
+    hash            = XXH3_64bits(&ts, sizeof(ts));
+    categories_etag = fmt::format("\"{:016x}\"", hash);
 }

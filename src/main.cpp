@@ -195,8 +195,6 @@ int main(int argc, char **argv) {
         });
 
         router.route("POST " + root + "/api/auth/images", [&](brb::Context &c) -> brb::awaitable<void> {
-            log("{}: upload image", c.get<std::string>("username"));
-
             const auto content_type = c.req()[brb::http::field::content_type];
 
             std::unordered_map<std::string_view, std::string_view> mime_extensions{
@@ -235,11 +233,17 @@ int main(int argc, char **argv) {
 
             std::tuple fields          = {cpx::field_ref(url) = "url"};
             c.response_string().body() = cpx::yy_json::dump(fields);
+
+            log("{}: upload image", c.get<std::string>("username"));
             co_return;
         });
 
         router.route("GET " + root + "/api/auth/tables", [&](brb::Context &c) -> brb::awaitable<void> {
-            log("{}: download table", c.get<std::string>("username"));
+            const auto password = c.req()["X-Pass"];
+            if (password != branch.password) {
+                c.res().result(brb::http::status::unauthorized);
+                co_return;
+            }
 
             const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
             const auto filedir  = args.working_dir + "/static" + root + "/assets/tables/";
@@ -251,13 +255,20 @@ int main(int argc, char **argv) {
             auto &res = c.response_string();
             res.result(brb::http::status::found);
             res.set(brb::http::field::location, url);
-            res.body() = "null";
 
+            std::tuple fields = {cpx::field_ref(url) = "url"};
+            res.body()        = cpx::yy_json::dump(fields);
+
+            log("{}: download table", c.get<std::string>("username"));
             co_return;
         });
 
         router.route("POST " + root + "/api/auth/tables", [&](brb::Context &c) -> brb::awaitable<void> {
-            log("{}: update table", c.get<std::string>("username"));
+            const auto password = c.req()["X-Pass"];
+            if (password != branch.password) {
+                c.res().result(brb::http::status::unauthorized);
+                co_return;
+            }
 
             const auto content_type = c.req()[brb::http::field::content_type];
             if (!content_type.starts_with("text/csv")) {
@@ -288,20 +299,13 @@ int main(int argc, char **argv) {
             std::tuple fields          = {cpx::field_ref(url) = "url"};
             c.response_string().body() = cpx::yy_json::dump(fields);
 
-            boost::asio::co_spawn(
-                io,
-                [&app, csv = filepath]() -> brb::awaitable<void> {
-                    app.load_products_csv(csv);
-                    co_return;
-                },
-                boost::asio::detached
-            );
+            app.load_products_csv(filepath);
+            log("{}: update table", c.get<std::string>("username"));
+
             co_return;
         });
 
         router.route("POST " + root + "/api/auth/sync", [&](brb::Context &c) -> brb::awaitable<void> {
-            log("{}: sync table", c.get<std::string>("username"));
-
             std::string url = branch.spreadsheet;
 
             const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
@@ -337,6 +341,7 @@ int main(int argc, char **argv) {
             }
 
             app.load_products_csv(filepath);
+            log("{}: sync table", c.get<std::string>("username"));
             co_return;
         });
 
