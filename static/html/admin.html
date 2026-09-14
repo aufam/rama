@@ -82,6 +82,12 @@
           <span class="admin-topbar-title" id="admin-view-title-mobile">Kelola Produk</span>
         </div>
         <div class="admin-topbar-actions">
+          <button class="btn-admin-secondary btn-icon-only" id="btn-download-csv-mobile" title="Download CSV">
+            <i class="fa-solid fa-file-arrow-down"></i>
+          </button>
+          <button class="btn-admin-secondary btn-icon-only" id="btn-upload-csv-mobile" title="Upload CSV">
+            <i class="fa-solid fa-file-arrow-up"></i>
+          </button>
           <button class="btn-admin-primary btn-icon-only" id="btn-add-product-mobile">
             <i class="fa-solid fa-plus"></i>
           </button>
@@ -95,6 +101,14 @@
           <p id="admin-view-subtitle">Kelola daftar barang, satuan, harga jual, dan sisa stok toko Rama.</p>
         </div>
         <div class="admin-header-actions">
+          <button class="btn-admin-secondary" id="btn-download-csv">
+            <i class="fa-solid fa-file-arrow-down"></i>
+            <span>Download CSV</span>
+          </button>
+          <button class="btn-admin-secondary" id="btn-upload-csv">
+            <i class="fa-solid fa-file-arrow-up"></i>
+            <span>Upload CSV</span>
+          </button>
           <button class="btn-admin-primary" id="btn-add-product">
             <i class="fa-solid fa-plus"></i>
             <span>Tambah Produk</span>
@@ -153,12 +167,7 @@
               <div class="filter-selects">
                 <select id="admin-cat-filter" class="admin-select">
                   <option value="all">Semua Kategori</option>
-                </select>
-                <select id="admin-stock-filter" class="admin-select">
-                  <option value="all">Semua Status Stok</option>
-                  <option value="in-stock">Stok Aman (&gt; 5)</option>
-                  <option value="low-stock">Stok Menipis (1 - 5)</option>
-                  <option value="out-stock">Stok Habis (0)</option>
+                  <option value="promo">🔥 Promo</option>
                 </select>
               </div>
             </div>
@@ -389,6 +398,51 @@
     </div>
   </div>
 
+  <!-- MODAL: CSV Authorization (Download / Upload) -->
+  <div class="modal-overlay" id="modal-csv-auth">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-shield-halved" style="color: var(--admin-accent);"></i>
+          <span id="csv-auth-title">Verifikasi Admin</span>
+        </div>
+        <button class="btn-close-modal" type="button" onclick="closeAllModals()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="csv-auth-form">
+        <div class="modal-body">
+          <div id="csv-auth-warning"
+            style="background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 0.75rem 0.85rem; border-radius: 8px; margin-bottom: 1rem; display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.8rem; line-height: 1.4;">
+            <i class="fa-solid fa-triangle-exclamation" style="margin-top: 2px;"></i>
+            <span id="csv-auth-warning-text">Tindakan ini menyangkut seluruh data katalog produk. Masukkan kembali
+              password admin Anda untuk melanjutkan.</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="csv-auth-password">Password Admin *</label>
+            <input type="password" id="csv-auth-password" class="form-control" autocomplete="current-password"
+              required>
+          </div>
+
+          <div class="form-group" id="csv-auth-file-group" style="display: none;">
+            <label class="form-label" for="csv-auth-file">File CSV *</label>
+            <input type="file" id="csv-auth-file" class="form-control" accept=".csv,text/csv">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-clear-cart"
+            style="width: auto; height: auto; padding: 0.6rem 1rem; border-radius: var(--radius-sm);"
+            onclick="closeAllModals()">Batal</button>
+          <button type="submit" class="btn-checkout" id="csv-auth-submit-btn">
+            <i class="fa-solid fa-lock-open"></i>
+            <span>Verifikasi &amp; Lanjutkan</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: Detail Rincian Pesanan Admin -->
   <div class="modal-overlay" id="modal-order-detail">
     <div class="modal-card" style="max-width: 600px;">
@@ -430,8 +484,12 @@
     document.addEventListener('DOMContentLoaded', function () {
       const addMobile = document.getElementById('btn-add-product-mobile');
       const resetMobile = document.getElementById('btn-reset-demo-mobile');
+      const downloadCsvMobile = document.getElementById('btn-download-csv-mobile');
+      const uploadCsvMobile = document.getElementById('btn-upload-csv-mobile');
       if (addMobile) addMobile.addEventListener('click', () => document.getElementById('btn-add-product').click());
       if (resetMobile) resetMobile.addEventListener('click', () => document.getElementById('btn-reset-demo').click());
+      if (downloadCsvMobile) downloadCsvMobile.addEventListener('click', () => document.getElementById('btn-download-csv').click());
+      if (uploadCsvMobile) uploadCsvMobile.addEventListener('click', () => document.getElementById('btn-upload-csv').click());
     });
   </script>
   <script src="js/admin.js"></script>

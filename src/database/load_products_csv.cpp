@@ -32,9 +32,6 @@ void rama::App::load_products_csv(const std::string &path) {
     db(begin_transaction);
     cpx::defer _ = [&]() { db(ok ? commit : roleback); };
 
-    db(delete_products);
-    db(delete_categories);
-
     for (auto row : reader) {
         const auto size = row.size();
         if (size < 4)

@@ -74,6 +74,20 @@ body.admin-body {
   z-index: 300;
 }
 
+/* MODALS (shared .modal-overlay/.modal-card come from kiosk.css)
+   The sidebar above uses z-index: 300 and modal-overlay/.modal-card is 100% wide
+   by default, which made it render full-bleed *behind* the sidebar on desktop.
+   Bump the modal above the sidebar and give it the same sensible desktop cap
+   already used by the order-detail modal, so it's never hidden on the left. */
+body.admin-body .modal-overlay {
+  z-index: 350;
+}
+
+body.admin-body .modal-card {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
 .sidebar-close-btn {
   display: none;
 }
@@ -478,6 +492,12 @@ body.admin-body {
 / ENLARGED MULTILINE PRODUCT ITEM CARD STYLING */
 .product-table-td {
   padding: 1.1rem 1.25rem !important;
+}
+
+/* Pesanan (Orders) table cells - default .admin-table td has padding:0,
+   so give order rows their own breathing room from the row/table borders */
+#admin-orders-table-body td {
+  padding: 0.9rem 1.25rem;
 }
 
 .product-item-wrapper {

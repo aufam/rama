@@ -148,14 +148,6 @@ function setupAdminListeners() {
     });
   }
 
-  // Filter status stok
-  const stockFilter = document.getElementById('admin-stock-filter');
-  if (stockFilter) {
-    stockFilter.addEventListener('change', () => {
-      renderTable();
-    });
-  }
-
   // Input pencarian pesanan
   const orderSearchInput = document.getElementById('admin-order-search');
   if (orderSearchInput) {
@@ -176,6 +168,23 @@ function setupAdminListeners() {
   const btnAdd = document.getElementById('btn-add-product');
   if (btnAdd) {
     btnAdd.addEventListener('click', openAddProductModal);
+  }
+
+  // Tombol Download CSV & Upload CSV (memicu modal verifikasi admin dulu)
+  const btnDownloadCsv = document.getElementById('btn-download-csv');
+  if (btnDownloadCsv) {
+    btnDownloadCsv.addEventListener('click', () => openCsvAuthModal('download'));
+  }
+
+  const btnUploadCsv = document.getElementById('btn-upload-csv');
+  if (btnUploadCsv) {
+    btnUploadCsv.addEventListener('click', () => openCsvAuthModal('upload'));
+  }
+
+  // Submit form verifikasi admin untuk CSV (download / upload)
+  const csvAuthForm = document.getElementById('csv-auth-form');
+  if (csvAuthForm) {
+    csvAuthForm.addEventListener('submit', handleCsvAuthSubmit);
   }
 
   // Tombol Reset Data Demo
@@ -325,7 +334,10 @@ function populateCategoryDropdowns() {
   const formCatSelect = document.getElementById('prod-category');
 
   if (filterSelect) {
+    // "promo" adalah pseudo-kategori (bukan kategori asli di database):
+    // menampilkan semua produk yang memiliki discount > 0.
     filterSelect.innerHTML = '<option value="all">Semua Kategori</option>' +
+      '<option value="promo">🔥 Promo</option>' +
       adminCategories
         .filter(c => c.id !== 'all')
         .map(c => `<option value="${c.id}">${c.id}</option>`)
@@ -380,7 +392,9 @@ function renderTable() {
 
   let filtered = adminProducts;
 
-  if (cat !== 'all') {
+  if (cat === 'promo') {
+    filtered = filtered.filter(p => Number(p.discount || 0) > 0);
+  } else if (cat !== 'all') {
     filtered = filtered.filter(p => p.category === cat);
   }
 
@@ -820,6 +834,80 @@ window.toggleItemBarcode = function(index, barcodeValue) {
   }
 };
 
+// Menyimpan mode modal verifikasi CSV yang sedang aktif ('download' | 'upload')
+let pendingCsvAction = null;
+
+/**
+ * Membuka modal verifikasi admin sebelum menjalankan aksi Download/Upload CSV.
+ * Ini adalah lapisan keamanan tambahan di sisi klien (re-auth password) sebelum
+ * memicu operasi sensitif yang menyentuh seluruh data katalog produk.
+ * @param {'download'|'upload'} mode
+ */
+function openCsvAuthModal(mode) {
+  pendingCsvAction = mode;
+
+  const title = document.getElementById('csv-auth-title');
+  const warningText = document.getElementById('csv-auth-warning-text');
+  const fileGroup = document.getElementById('csv-auth-file-group');
+  const fileInput = document.getElementById('csv-auth-file');
+  const submitBtn = document.getElementById('csv-auth-submit-btn');
+  const passwordInput = document.getElementById('csv-auth-password');
+
+  if (mode === 'upload') {
+    if (title) title.textContent = 'Verifikasi Admin — Upload CSV';
+    if (warningText) warningText.textContent = 'Mengunggah file CSV akan mengubah/menimpa data produk di katalog. Masukkan password admin dan pilih file CSV untuk melanjutkan.';
+    if (fileGroup) fileGroup.style.display = '';
+    if (fileInput) { fileInput.value = ''; fileInput.required = true; }
+    if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-file-arrow-up"></i> <span>Verifikasi &amp; Upload</span>';
+  } else {
+    if (title) title.textContent = 'Verifikasi Admin — Download CSV';
+    if (warningText) warningText.textContent = 'Tindakan ini akan mengunduh seluruh data katalog produk. Masukkan kembali password admin Anda untuk melanjutkan.';
+    if (fileGroup) fileGroup.style.display = 'none';
+    if (fileInput) { fileInput.value = ''; fileInput.required = false; }
+    if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-file-arrow-down"></i> <span>Verifikasi &amp; Download</span>';
+  }
+
+  if (passwordInput) passwordInput.value = '';
+
+  const modal = document.getElementById('modal-csv-auth');
+  if (modal) modal.classList.add('active');
+}
+
+/**
+ * Handler submit modal verifikasi CSV. Memanggil Store.downloadCSV() / Store.uploadCSV()
+ * (lihat store.js — keduanya masih berupa method TODO menunggu integrasi backend).
+ */
+async function handleCsvAuthSubmit(e) {
+  e.preventDefault();
+
+  const password = document.getElementById('csv-auth-password')?.value || '';
+  const submitBtn = document.getElementById('csv-auth-submit-btn');
+  if (submitBtn) submitBtn.disabled = true;
+
+  try {
+    if (pendingCsvAction === 'upload') {
+      const fileInput = document.getElementById('csv-auth-file');
+      const file = fileInput?.files?.[0];
+      if (!file) {
+        alert('Silakan pilih file CSV terlebih dahulu.');
+        return;
+      }
+      await Store.uploadCSV(file, password);
+      alert('Upload CSV berhasil.');
+      await loadAdminData();
+    } else {
+      await Store.downloadCSV(password);
+    }
+    closeAllModals();
+  } catch (err) {
+    console.error('Gagal memproses CSV:', err);
+    alert('Gagal memproses CSV: ' + err.message);
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+    pendingCsvAction = null;
+  }
+}
+
 function openAddProductModal() {
   editingProductId = null;
   document.getElementById('modal-form-title').textContent = 'Tambah Produk Baru';
@@ -902,5 +990,6 @@ window.closeAllModals = function() {
     modal.classList.remove('active');
   });
   editingProductId = null;
+  pendingCsvAction = null;
   resetImagePreview();
 };

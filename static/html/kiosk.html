@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#d9232d">
+  <meta name="theme-color" content="#059669">
   <meta name="description"
     content="Aplikasi Pemesanan Mandiri Rama Swalayan - Pilih belanjaan dan kirim langsung ke WhatsApp">
   <title>Rama Swalayan - Pesan Belanja Praktis</title>
@@ -30,20 +30,21 @@
     <header class="kiosk-header">
       <div class="brand-section">
         <div class="brand-logo-icon">
-          <img src="/logo.jpg" alt="Brand logo">
+          <img src="/logo.jpg" alt="Brand logo"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+          <i class="fa-solid fa-store" style="display:none;"></i>
         </div>
         <div>
           <div class="brand-title">Rama<span>Swalayan</span></div>
-          <span class="brand-subtitle">Order Mandiri via WhatsApp</span>
+          <span class="brand-subtitle"><i class="fa-brands fa-whatsapp"></i> Order Mandiri Praktis</span>
         </div>
       </div>
-      <!-- <div class="header-actions" hidden> -->
-      <!--   <a href="admin.html" class="btn-admin-link" title="Buka Panel Kelola Inventaris"> -->
-      <!--     <i class="fa-solid fa-boxes-stacked"></i> -->
-      <!--     <span>Admin</span> -->
-      <!--   </a> -->
-      <!-- </div> -->
     </header>
+
+    <!-- Horizontal Category Quick Navigation Chips -->
+    <nav class="mobile-category-nav" id="category-chips-nav">
+      <!-- Injected dynamically via kiosk.js -->
+    </nav>
 
     <!-- Main Catalog View -->
     <main class="kiosk-main">
@@ -51,12 +52,13 @@
         <div class="category-dropdown">
           <select id="category-select" class="category-select">
             <option value="">Semua Kategori</option>
+            <option value="promo">🔥 Promo Special</option>
             <!-- Injected via kiosk.js -->
           </select>
         </div>
         <div class="search-box">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="search-input" class="search-input" placeholder="Cari nama produk / kebutuhan..."
+          <input type="text" id="search-input" class="search-input" placeholder="Cari barang, buah, bumbu..."
             autocomplete="off">
         </div>
       </div>
@@ -110,10 +112,10 @@
       <div class="modal-body">
         <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;">
           <div class="product-icon-wrap" id="modal-item-icon-wrap"
-            style="width: 160px; height: 160px; font-size: 1.8rem; margin: 0; flex-shrink: 0;">
+            style="width: 140px; height: 140px; font-size: 1.8rem; margin: 0; flex-shrink: 0; border-radius: var(--radius-md);">
             <i id="modal-item-icon" class="fa-solid fa-box"></i>
             <img id="modal-item-img" src="" alt="Foto Produk"
-              style="display: none; width: 100%; height: 100%; object-fit: cover;">
+              style="display: none; width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-md);">
           </div>
           <div>
             <h3 id="modal-item-title"
@@ -126,7 +128,7 @@
 
         <div>
           <div class="form-group"
-            style="display: flex; align-items: center; justify-content: space-between; background: var(--gray-50); padding: 0.75rem 1rem; border-radius: var(--radius-sm);">
+            style="display: flex; align-items: center; justify-content: space-between; background: var(--gray-50); padding: 0.75rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--gray-200);">
             <label class="form-label" style="margin: 0; font-size: 0.9rem;">Jumlah Pesanan:</label>
             <div class="cart-qty-controls" style="padding: 3px;">
               <button class="btn-qty" id="modal-qty-minus"
@@ -198,7 +200,7 @@
       <div class="modal-drag-indicator"></div>
       <div class="modal-header">
         <div class="modal-title">
-          <i class="fa-solid fa-paper-plane" style="color: var(--success);"></i>
+          <i class="fa-brands fa-whatsapp" style="color: #25D366;"></i>
           <span>Kirim Pesanan via WhatsApp</span>
         </div>
         <button class="btn-close-modal" onclick="closeAllModals()">
@@ -210,7 +212,7 @@
 
           <div id="not-tracking-link-container">
             <div
-              style="background: var(--primary-light); padding: 0.75rem 0.85rem; border-radius: var(--radius-sm); margin-bottom: 1rem; display: flex; gap: 0.65rem; align-items: flex-start;">
+              style="background: var(--primary-light); padding: 0.75rem 0.85rem; border-radius: var(--radius-sm); margin-bottom: 1rem; display: flex; gap: 0.65rem; align-items: flex-start; border: 1px solid rgba(5, 150, 105, 0.2);">
               <i class="fa-solid fa-circle-info" style="color: var(--primary); font-size: 1.1rem; margin-top: 2px;"></i>
               <div style="font-size: 0.8rem; color: var(--dark); line-height: 1.35;">
                 <strong>Langkah:</strong> Isi informasi pengiriman, lalu tekan

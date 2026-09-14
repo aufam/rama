@@ -230,6 +230,7 @@ int main(int argc, char **argv) {
                 c.res().result(brb::http::status::internal_server_error);
                 co_return;
             }
+            ofs.close();
 
             std::tuple fields          = {cpx::field_ref(url) = "url"};
             c.response_string().body() = cpx::yy_json::dump(fields);
@@ -276,14 +277,14 @@ int main(int argc, char **argv) {
                 co_return;
             }
 
-            const auto filename = fmt::format("MASTER_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
+            const auto filename = fmt::format("PATCH_{:%Y-%m-%d_%H-%M-%S}.csv", std::chrono::system_clock::now());
             const auto filedir  = args.working_dir + "/static" + root + "/assets/tables/";
             const auto filepath = filedir + filename;
             const auto url      = root + "/assets/tables/" + filename;
 
             std::filesystem::create_directories(filedir);
 
-            std::ofstream ofs(filename);
+            std::ofstream ofs(filepath);
             if (!ofs) {
                 c.res().result(brb::http::status::internal_server_error);
                 co_return;
@@ -295,6 +296,7 @@ int main(int argc, char **argv) {
                 c.res().result(brb::http::status::internal_server_error);
                 co_return;
             }
+            ofs.close();
 
             std::tuple fields          = {cpx::field_ref(url) = "url"};
             c.response_string().body() = cpx::yy_json::dump(fields);
@@ -505,8 +507,9 @@ int main(int argc, char **argv) {
     }
 
     auto work = [&](std::shared_ptr<boost::beast::tcp_stream> stream) -> boost::asio::awaitable<void> {
+        const auto max_body_limit = 10 * 1024 * 1024;
         while (is_running) {
-            bool keep_alive = co_await router.handle(stream);
+            bool keep_alive = co_await router.handle(stream, max_body_limit);
             if (!keep_alive)
                 break;
         }
