@@ -12,6 +12,10 @@ void rama::App::create_tables() {
     static constexpr rama::database::OrderItem order_items;
     static constexpr rama::database::Product   products;
 
+    static constexpr database::LandscapeBanner landscape_banners;
+    static constexpr database::Square1Banner   square1_banners;
+    static constexpr database::Square2Banner   square2_banners;
+
     cpx::sql::Statement<> foreign_keys{"PRAGMA foreign_keys = ON"};
     db(foreign_keys);
 
@@ -59,4 +63,8 @@ void rama::App::create_tables() {
         order_items.quantity,
         order_items.notes
     ));
+
+    db(create_table_if_not_exists<landscape_banners>(landscape_banners.url));
+    db(create_table_if_not_exists<square1_banners>(square1_banners.url));
+    db(create_table_if_not_exists<square2_banners>(square2_banners.url));
 }

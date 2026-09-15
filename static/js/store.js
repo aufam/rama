@@ -230,7 +230,16 @@ const STORAGE_KEYS = {
   CART: 'rama_customer_cart_v3',
   IMAGE_DB: 'rama_image_database_v1',
   ORDERS: 'rama_customer_orders_v1',
-  AUTH: 'rama_admin_token_v1'
+  AUTH: 'rama_admin_token_v1',
+  BANNERS: 'rama_promo_banners_v1'
+};
+
+// Struktur default banner promo homepage: 3 slot (1 landscape + 2 kotak berdampingan).
+// Masing-masing slot berisi array URL gambar (bisa lebih dari 1 -> auto-swipe carousel di homepage).
+const DEFAULT_BANNERS = {
+  landscape: [],
+  square1: [],
+  square2: []
 };
 
 const AUTHORIZATION = null;
@@ -332,7 +341,7 @@ const Store = {
    * =========================================================================
    */
 
-  async getCategories(local = true) {
+  async getCategories(local = false) {
     if (local) {
       const raw = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
       return raw ? JSON.parse(raw) : [];
@@ -370,6 +379,62 @@ const Store = {
 
     localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
     return products;
+  },
+
+  /**
+   * =========================================================================
+   * PROMO BANNER SERVICES (Homepage - "Semua Kategori" only)
+   * =========================================================================
+   * 3 slot tetap: 'landscape' (rectangle, paling atas) dan 'square1' + 'square2'
+   * (dua gambar kotak berdampingan di bawahnya). Setiap slot menyimpan ARRAY URL
+   * gambar karena tiap slot bisa berisi lebih dari 1 gambar (carousel/auto-swipe).
+   */
+
+  /**
+   * @param {boolean} local - true = baca dari cache localStorage saja (tanpa network)
+   * @returns {Promise<{landscape: string[], square1: string[], square2: string[]}>}
+   */
+  async getBanners(local = false) {
+    if (local) {
+      const raw = localStorage.getItem(STORAGE_KEYS.BANNERS);
+      return raw ? JSON.parse(raw) : { ...DEFAULT_BANNERS };
+    }
+
+    const response = await fetch('api/banners');
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const banners = await response.json();
+
+    localStorage.setItem(STORAGE_KEYS.BANNERS, JSON.stringify(banners));
+    return banners;
+  },
+
+  /**
+   * Menyimpan seluruh konfigurasi 3 slot banner sekaligus (dipanggil admin.js
+   * setiap kali admin menambah/menghapus/mengurutkan ulang gambar pada satu slot).
+   * @param {{landscape: string[], square1: string[], square2: string[]}} banners
+   */
+  async saveBanners(banners) {
+    const response = await fetch('api/auth/banners', {
+      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'Content-Type': 'application/json' },
+      method: 'POST',
+      body: JSON.stringify(banners),
+    });
+
+    if (response.status === 401 && this.onUnauthorized) {
+      await this.onUnauthorized();
+      return this.saveBanners(banners);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    localStorage.setItem(STORAGE_KEYS.BANNERS, JSON.stringify(banners));
+    return banners;
   },
 
   async saveProducts(products) {
@@ -456,40 +521,11 @@ const Store = {
   },
 
   async downloadCSV(password) {
-    const response = await fetch('api/auth/tables', {
-      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'X-Pass': password },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const blob = await response.blob();
-
-    const filename = decodeURIComponent(
-      new URL(response.url).pathname.split('/').pop()
-    );
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-
-    link.href = url;
-    link.download = filename;
-    link.click();
-
-    URL.revokeObjectURL(url);
+    throw new Error('downloadCSV belum diimplementasikan — perlu integrasi Backend API (lihat TODO di store.js).');
   },
 
   async uploadCSV(file, password) {
-    const response = await fetch('api/auth/tables', {
-      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'X-Pass': password, 'Content-Type': 'text/csv', },
-      method: 'POST',
-      body: file,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
+    throw new Error('uploadCSV belum diimplementasikan — perlu integrasi Backend API (lihat TODO di store.js).');
   },
 
   /**

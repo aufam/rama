@@ -10,6 +10,10 @@ export namespace rama::database {
     struct Category;
     struct Order;
     struct OrderItem;
+
+    struct LandscapeBanner;
+    struct Square1Banner;
+    struct Square2Banner;
 } // namespace rama::database
 
 namespace rama::database {
@@ -68,4 +72,22 @@ struct rama::database::OrderItem {
     Column<OrderItem, std::string_view> unit       = "unit text not null";
     Column<OrderItem, long long>        quantity   = "quantity integer not null";
     Column<OrderItem, std::string_view> notes      = "notes text not null default ''";
+};
+
+struct rama::database::LandscapeBanner {
+    static constexpr const char *TableName = "landscape_banners";
+
+    Column<LandscapeBanner, std::string_view> url = "url text not null";
+};
+
+struct rama::database::Square1Banner {
+    static constexpr const char *TableName = "square1_banners";
+
+    Column<Square1Banner, std::string_view> url = "url text not null";
+};
+
+struct rama::database::Square2Banner {
+    static constexpr const char *TableName = "square2_banners";
+
+    Column<Square2Banner, std::string_view> url = "url text not null";
 };

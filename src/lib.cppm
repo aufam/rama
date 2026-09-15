@@ -10,6 +10,7 @@ import rama.database;
 import rama.product;
 import rama.category;
 import rama.order;
+import rama.banner;
 import rama.error;
 import brb;
 import cpx.sqlite;
@@ -45,4 +46,7 @@ struct rama::App {
     std::optional<Order> get_order(const std::string &id);
     void                 add_order(Order &);
     void                 delete_order(const std::string &id);
+
+    Banner get_banner();
+    void   update_banner(const Banner &);
 };

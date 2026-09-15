@@ -7,8 +7,12 @@
 
 let allProducts = [];
 let allCategories = [];
+let allBanners = { landscape: [], square1: [], square2: [] };
 let activeCategoryId = null; // null = semua kategori, 'promo' = promo, or category ID
 let searchQuery = '';
+
+// Timer auto-swipe untuk tiap slot carousel banner promo homepage
+let bannerAutoTimers = [];
 
 // Multi-category lazy loading state
 let categoriesToRender = [];
@@ -43,6 +47,15 @@ async function loadInitialData() {
     allCategories = await Store.getCategories();
     allProducts = await Store.getProducts();
     Store.updateCart(allProducts);
+
+    // Banner promo bersifat non-kritikal: jika endpoint backend-nya belum siap,
+    // katalog produk tetap tampil normal tanpa banner.
+    try {
+      allBanners = await Store.getBanners();
+    } catch (bannerErr) {
+      console.warn('Gagal memuat banner promo (opsional):', bannerErr);
+    }
+
     renderCategories();
     renderProducts();
   } catch (err) {
@@ -341,6 +354,7 @@ function renderProducts() {
   if (!grid) return;
 
   grid.innerHTML = '';
+  clearBannerTimers();
 
   // Mode 1: "Semua Kategori" view (No specific category selected & no search query)
   if (!activeCategoryId && !searchQuery) {
@@ -355,8 +369,16 @@ function renderProducts() {
       `;
       return;
     }
+
+    // Banner promo hanya tampil di mode "Semua Kategori", diletakkan tepat
+    // di atas seksi produk Promo (lihat prepareCategoriesToRender/loadMoreCategories).
+    const bannerHtml = getBannerSectionHtml();
+    if (bannerHtml) grid.insertAdjacentHTML('beforeend', bannerHtml);
+
     catRenderIndex = 0;
     loadMoreCategories();
+
+    if (bannerHtml) initBannerCarousels();
     return;
   }
 
@@ -459,6 +481,111 @@ function loadMoreCategories() {
 
   grid.insertAdjacentHTML('beforeend', html);
   catRenderIndex += CAT_RENDER_BATCH;
+}
+
+/**
+ * =========================================================================
+ * PROMO BANNER (Homepage - hanya tampil di mode "Semua Kategori")
+ * =========================================================================
+ * 3 slot: 1 landscape (rectangle, paling atas) + 2 kotak berdampingan di bawahnya.
+ * Tiap slot bisa berisi lebih dari 1 gambar -> otomatis jadi carousel yang bisa
+ * di-swipe pengguna dan auto-swipe berkala, lengkap dengan indikator titik (dots).
+ */
+
+function getBannerSectionHtml() {
+  const landscape = (allBanners.landscape || []).filter(Boolean);
+  const square1 = (allBanners.square1 || []).filter(Boolean);
+  const square2 = (allBanners.square2 || []).filter(Boolean);
+
+  if (landscape.length === 0 && square1.length === 0 && square2.length === 0) {
+    return '';
+  }
+
+  const landscapeHtml = landscape.length > 0
+    ? renderBannerCarouselHtml('landscape', landscape, 'landscape')
+    : '';
+
+  const squareRowHtml = (square1.length > 0 || square2.length > 0)
+    ? `
+      <div class="banner-square-row">
+        ${square1.length > 0 ? renderBannerCarouselHtml('square1', square1, 'square') : ''}
+        ${square2.length > 0 ? renderBannerCarouselHtml('square2', square2, 'square') : ''}
+      </div>
+    `
+    : '';
+
+  return `
+    <div class="promo-banner-section" id="promo-banner-section">
+      ${landscapeHtml}
+      ${squareRowHtml}
+    </div>
+  `;
+}
+
+function renderBannerCarouselHtml(slotId, images, variant) {
+  const slidesHtml = images.map(url => `
+    <div class="banner-slide">
+      <img src="${url}" alt="Banner Promo" loading="lazy">
+    </div>
+  `).join('');
+
+  const dotsHtml = images.length > 1
+    ? `
+      <div class="banner-dots">
+        ${images.map((_, i) => `<span class="banner-dot ${i === 0 ? 'active' : ''}"></span>`).join('')}
+      </div>
+    `
+    : '';
+
+  return `
+    <div class="banner-carousel banner-carousel-${variant}" data-slot="${slotId}">
+      <div class="banner-track">
+        ${slidesHtml}
+      </div>
+      ${dotsHtml}
+    </div>
+  `;
+}
+
+function clearBannerTimers() {
+  bannerAutoTimers.forEach(timer => clearInterval(timer));
+  bannerAutoTimers = [];
+}
+
+function initBannerCarousels() {
+  clearBannerTimers();
+
+  document.querySelectorAll('.banner-carousel').forEach(carousel => {
+    const track = carousel.querySelector('.banner-track');
+    const dotsWrap = carousel.querySelector('.banner-dots');
+    const slides = track ? track.querySelectorAll('.banner-slide') : [];
+    if (!track || slides.length === 0) return;
+
+    // Sinkronkan indikator titik saat pengguna swipe manual
+    if (dotsWrap) {
+      track.addEventListener('scroll', () => {
+        if (!track.clientWidth) return;
+        const idx = Math.round(track.scrollLeft / track.clientWidth);
+        dotsWrap.querySelectorAll('.banner-dot').forEach((dot, i) => {
+          dot.classList.toggle('active', i === idx);
+        });
+      }, { passive: true });
+    }
+
+    // Auto-swipe berkala setiap beberapa detik jika slot punya lebih dari 1 gambar
+    if (slides.length > 1) {
+      const timer = setInterval(() => {
+        if (!track.isConnected) {
+          clearInterval(timer);
+          return;
+        }
+        const current = Math.round(track.scrollLeft / track.clientWidth);
+        const next = (current + 1) % slides.length;
+        track.scrollTo({ left: next * track.clientWidth, behavior: 'smooth' });
+      }, 4500);
+      bannerAutoTimers.push(timer);
+    }
+  });
 }
 
 /**

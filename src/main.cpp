@@ -16,6 +16,7 @@ import rama.error;
 import rama.product;
 import rama.category;
 import rama.order;
+import rama.banner;
 import rama.jwt;
 
 struct Args {
@@ -417,6 +418,12 @@ int main(int argc, char **argv) {
             co_return;
         });
 
+        router.route("GET " + root + "/api/banners", [&](brb::Context &c) -> brb::awaitable<void> {
+            const auto banner          = app.get_banner();
+            c.response_string().body() = cpx::yy_json::dump(banner);
+            co_return;
+        });
+
         router.route("POST " + root + "/api/auth/products", [&](brb::Context &c) -> brb::awaitable<void> {
             auto &body    = c.parser_string().get().body();
             auto  product = cpx::yy_json::parse<rama::Product>(body);
@@ -456,6 +463,15 @@ int main(int argc, char **argv) {
             c.response_string().body() = cpx::yy_json::dump(res);
 
             log("{}: modify order order.id={:?}", c.get<std::string>("username"), order.id);
+            co_return;
+        });
+
+        router.route("POST " + root + "/api/auth/banners", [&](brb::Context &c) -> brb::awaitable<void> {
+            auto &body   = c.parser_string().get().body();
+            auto  banner = cpx::yy_json::parse<rama::Banner>(body);
+
+            app.update_banner(banner);
+            log("{}: update banner", c.get<std::string>("username"));
             co_return;
         });
 

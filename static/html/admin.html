@@ -58,6 +58,11 @@
           <span>Status Pesanan</span>
           <span class="admin-nav-badge" id="nav-badge-orders">0</span>
         </button>
+        <button type="button" class="admin-nav-item" id="nav-tab-banners"
+          onclick="switchAdminTab('banners'); closeSidebar()">
+          <i class="fa-solid fa-images"></i>
+          <span>Banner Promo</span>
+        </button>
       </nav>
 
       <div class="admin-nav-footer">
@@ -266,6 +271,79 @@
                 </tbody>
               </table>
             </div>
+          </div>
+
+        </div>
+
+        <!-- =========================================================================
+             TAB 3: BANNER PROMO HOMEPAGE
+             ========================================================================= -->
+        <div class="admin-tab-view" id="tab-view-banners">
+
+          <div class="banner-manage-intro">
+            <i class="fa-solid fa-circle-info"></i>
+            <p>Banner promo ini akan tampil di halaman utama aplikasi pemesanan, hanya saat pelanggan
+              memilih filter <strong>Semua Kategori</strong> — tepat di atas daftar produk Promo.
+              Setiap slot bisa diisi lebih dari satu gambar; jika lebih dari satu, gambar akan tampil
+              sebagai carousel yang bisa digeser (swipe) dan bergeser otomatis secara berkala.</p>
+          </div>
+
+          <div class="banner-manage-grid">
+
+            <!-- Slot 1: Landscape (Rectangle) -->
+            <div class="banner-manage-card">
+              <div class="banner-manage-card-head">
+                <i class="fa-solid fa-panorama"></i>
+                <span>Slot 1 — Banner Landscape</span>
+              </div>
+              <p class="banner-slot-hint">Tampil paling atas, memanjang penuh (rectangle). Rasio disarankan
+                sekitar 2.2 : 1.</p>
+              <div class="banner-image-list" id="banner-list-landscape">
+                <!-- Thumbnail gambar diinjeksi via admin.js -->
+              </div>
+              <label class="btn-admin-secondary banner-upload-btn">
+                <i class="fa-solid fa-plus"></i>
+                <span>Tambah Gambar</span>
+                <input type="file" accept="image/*" class="banner-file-input" data-slot="landscape" hidden>
+              </label>
+            </div>
+
+            <!-- Slot 2: Square (Kiri) -->
+            <div class="banner-manage-card">
+              <div class="banner-manage-card-head">
+                <i class="fa-solid fa-square"></i>
+                <span>Slot 2 — Banner Kotak (Kiri)</span>
+              </div>
+              <p class="banner-slot-hint">Tampil berdampingan dengan Slot 3, di bawah banner landscape.
+                Rasio disarankan 1 : 1 (persegi).</p>
+              <div class="banner-image-list" id="banner-list-square1">
+                <!-- Thumbnail gambar diinjeksi via admin.js -->
+              </div>
+              <label class="btn-admin-secondary banner-upload-btn">
+                <i class="fa-solid fa-plus"></i>
+                <span>Tambah Gambar</span>
+                <input type="file" accept="image/*" class="banner-file-input" data-slot="square1" hidden>
+              </label>
+            </div>
+
+            <!-- Slot 3: Square (Kanan) -->
+            <div class="banner-manage-card">
+              <div class="banner-manage-card-head">
+                <i class="fa-solid fa-square"></i>
+                <span>Slot 3 — Banner Kotak (Kanan)</span>
+              </div>
+              <p class="banner-slot-hint">Tampil berdampingan dengan Slot 2, di bawah banner landscape.
+                Rasio disarankan 1 : 1 (persegi).</p>
+              <div class="banner-image-list" id="banner-list-square2">
+                <!-- Thumbnail gambar diinjeksi via admin.js -->
+              </div>
+              <label class="btn-admin-secondary banner-upload-btn">
+                <i class="fa-solid fa-plus"></i>
+                <span>Tambah Gambar</span>
+                <input type="file" accept="image/*" class="banner-file-input" data-slot="square2" hidden>
+              </label>
+            </div>
+
           </div>
 
         </div>

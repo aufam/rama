@@ -10,7 +10,8 @@
 let adminProducts = [];
 let adminCategories = [];
 let adminOrders = [];
-let currentAdminTab = 'products'; // 'products' | 'orders'
+let adminBanners = { landscape: [], square1: [], square2: [] };
+let currentAdminTab = 'products'; // 'products' | 'orders' | 'banners'
 let editingProductId = null;
 let currentUploadedImageData = null;
 
@@ -84,6 +85,15 @@ async function loadAdminData(local = false) {
     renderTable();
     renderOrdersTable();
     updateOrdersBadge();
+
+    // Banner promo bersifat non-kritikal: jika endpoint backend-nya belum siap,
+    // tab lain (Produk/Pesanan) tetap berfungsi normal.
+    try {
+      adminBanners = await Store.getBanners(local);
+    } catch (bannerErr) {
+      console.warn('Gagal memuat banner promo (opsional):', bannerErr);
+    }
+    renderBannerManager();
   } catch (err) {
     console.error('Gagal memuat data admin inventaris & pesanan:', err);
     alert('Terjadi kesalahan saat memuat data toko.');
@@ -104,10 +114,12 @@ window.switchAdminTab = function(tabName) {
   // Update nav buttons active state
   document.getElementById('nav-tab-products')?.classList.toggle('active', tabName === 'products');
   document.getElementById('nav-tab-orders')?.classList.toggle('active', tabName === 'orders');
+  document.getElementById('nav-tab-banners')?.classList.toggle('active', tabName === 'banners');
 
   // Update tab views
   document.getElementById('tab-view-products')?.classList.toggle('active', tabName === 'products');
   document.getElementById('tab-view-orders')?.classList.toggle('active', tabName === 'orders');
+  document.getElementById('tab-view-banners')?.classList.toggle('active', tabName === 'banners');
 
   // Update header text and actions button
   const titleEl = document.getElementById('admin-view-title');
@@ -115,19 +127,32 @@ window.switchAdminTab = function(tabName) {
   const btnAddProduct = document.getElementById('btn-add-product');
   const titleMobile = document.getElementById('admin-view-title-mobile');
   const btnAddMobile = document.getElementById('btn-add-product-mobile');
+  const btnDownloadCsv = document.getElementById('btn-download-csv');
+  const btnUploadCsv = document.getElementById('btn-upload-csv');
+  const btnDownloadCsvMobile = document.getElementById('btn-download-csv-mobile');
+  const btnUploadCsvMobile = document.getElementById('btn-upload-csv-mobile');
+
+  // Tombol Tambah Produk & Download/Upload CSV hanya relevan di tab Produk
+  const isProductsTab = tabName === 'products';
+  if (btnAddProduct) btnAddProduct.style.display = isProductsTab ? 'flex' : 'none';
+  if (btnAddMobile) btnAddMobile.style.display = isProductsTab ? 'flex' : 'none';
+  if (btnDownloadCsv) btnDownloadCsv.style.display = isProductsTab ? 'flex' : 'none';
+  if (btnUploadCsv) btnUploadCsv.style.display = isProductsTab ? 'flex' : 'none';
+  if (btnDownloadCsvMobile) btnDownloadCsvMobile.style.display = isProductsTab ? 'flex' : 'none';
+  if (btnUploadCsvMobile) btnUploadCsvMobile.style.display = isProductsTab ? 'flex' : 'none';
 
   if (tabName === 'products') {
     if (titleEl) titleEl.textContent = 'Manajemen Inventaris & Katalog';
     if (subEl) subEl.textContent = 'Kelola daftar barang, satuan, harga jual, dan sisa stok toko Rama.';
     if (titleMobile) titleMobile.textContent = 'Kelola Produk';
-    if (btnAddProduct) btnAddProduct.style.display = 'flex';
-    if (btnAddMobile) btnAddMobile.style.display = 'flex';
+  } else if (tabName === 'banners') {
+    if (titleEl) titleEl.textContent = 'Banner Promo Homepage';
+    if (subEl) subEl.textContent = 'Atur gambar banner promo yang tampil di halaman utama aplikasi pemesanan.';
+    if (titleMobile) titleMobile.textContent = 'Banner Promo';
   } else {
     if (titleEl) titleEl.textContent = 'Manajemen & Status Pesanan Pelanggan';
     if (subEl) subEl.textContent = 'Pantau dan ubah alur status pesanan (Diterima ➔ Disiapkan ➔ Diantar ➔ Selesai).';
     if (titleMobile) titleMobile.textContent = 'Status Pesanan';
-    if (btnAddProduct) btnAddProduct.style.display = 'none';
-    if (btnAddMobile) btnAddMobile.style.display = 'none';
   }
 };
 
@@ -239,6 +264,42 @@ function setupAdminListeners() {
     priceInput.addEventListener('input', calculateSalePrice);
     discountInput.addEventListener('input', calculateSalePrice);
   }
+
+  // Tombol "Tambah Gambar" per slot banner promo
+  document.querySelectorAll('.banner-file-input').forEach(input => {
+    input.addEventListener('change', async (e) => {
+      const slot = e.target.getAttribute('data-slot');
+      const file = e.target.files?.[0];
+      e.target.value = ''; // reset supaya bisa pilih file yang sama lagi nanti
+      if (!file || !slot) return;
+      await handleAddBannerImage(slot, file);
+    });
+  });
+
+  // Delegasi klik untuk tombol hapus & pindah urutan gambar di tiap slot
+  document.querySelectorAll('.banner-image-list').forEach(list => {
+    list.addEventListener('click', async (e) => {
+      const deleteBtn = e.target.closest('.btn-banner-delete');
+      const moveBtn = e.target.closest('.btn-banner-move');
+
+      if (deleteBtn) {
+        const item = deleteBtn.closest('.banner-image-item');
+        const slot = item?.getAttribute('data-slot');
+        const index = Number(item?.getAttribute('data-index'));
+        if (slot != null && !Number.isNaN(index)) {
+          await handleDeleteBannerImage(slot, index);
+        }
+      } else if (moveBtn) {
+        const item = moveBtn.closest('.banner-image-item');
+        const slot = item?.getAttribute('data-slot');
+        const index = Number(item?.getAttribute('data-index'));
+        const dir = Number(moveBtn.getAttribute('data-dir'));
+        if (slot != null && !Number.isNaN(index)) {
+          await handleMoveBannerImage(slot, index, dir);
+        }
+      }
+    });
+  });
 }
 
 function setupImageUploadHandlers() {
@@ -894,7 +955,7 @@ async function handleCsvAuthSubmit(e) {
       }
       await Store.uploadCSV(file, password);
       alert('Upload CSV berhasil.');
-      await loadAdminData();
+      await loadAdminData(true);
     } else {
       await Store.downloadCSV(password);
     }
@@ -906,6 +967,89 @@ async function handleCsvAuthSubmit(e) {
     if (submitBtn) submitBtn.disabled = false;
     pendingCsvAction = null;
   }
+}
+
+/**
+ * =========================================================================
+ * BANNER PROMO HOMEPAGE — Manajemen 3 slot (landscape, square1, square2)
+ * =========================================================================
+ */
+
+const BANNER_SLOT_IDS = ['landscape', 'square1', 'square2'];
+
+function renderBannerManager() {
+  BANNER_SLOT_IDS.forEach(slotId => {
+    const list = document.getElementById(`banner-list-${slotId}`);
+    if (!list) return;
+
+    const images = adminBanners[slotId] || [];
+
+    if (images.length === 0) {
+      list.innerHTML = `<div class="banner-list-empty">Belum ada gambar di slot ini.</div>`;
+      return;
+    }
+
+    list.innerHTML = images.map((url, index) => `
+      <div class="banner-image-item" data-slot="${slotId}" data-index="${index}">
+        <img src="${url}" alt="Banner ${index + 1}">
+        <div class="banner-image-item-actions">
+          <button type="button" class="btn-banner-move" data-dir="-1" title="Pindah ke urutan sebelumnya" ${index === 0 ? 'disabled' : ''}>
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          <button type="button" class="btn-banner-move" data-dir="1" title="Pindah ke urutan berikutnya" ${index === images.length - 1 ? 'disabled' : ''}>
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+          <button type="button" class="btn-banner-delete" title="Hapus Gambar">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+
+async function persistBanners() {
+  try {
+    await Store.saveBanners(adminBanners);
+  } catch (err) {
+    console.error('Gagal menyimpan banner promo:', err);
+    alert('Gagal menyimpan perubahan banner: ' + err.message);
+  }
+}
+
+async function handleAddBannerImage(slot, file) {
+  try {
+    const uploadResult = await Store.uploadImage(file);
+    if (!uploadResult?.url) return;
+
+    if (!Array.isArray(adminBanners[slot])) adminBanners[slot] = [];
+    adminBanners[slot].push(uploadResult.url);
+
+    renderBannerManager();
+    await persistBanners();
+  } catch (err) {
+    console.error('Gagal mengunggah gambar banner:', err);
+    alert(err.message || 'Gagal mengunggah gambar banner');
+  }
+}
+
+async function handleDeleteBannerImage(slot, index) {
+  if (!Array.isArray(adminBanners[slot])) return;
+  adminBanners[slot].splice(index, 1);
+  renderBannerManager();
+  await persistBanners();
+}
+
+async function handleMoveBannerImage(slot, index, dir) {
+  const images = adminBanners[slot];
+  if (!Array.isArray(images)) return;
+
+  const targetIndex = index + dir;
+  if (targetIndex < 0 || targetIndex >= images.length) return;
+
+  [images[index], images[targetIndex]] = [images[targetIndex], images[index]];
+  renderBannerManager();
+  await persistBanners();
 }
 
 function openAddProductModal() {
