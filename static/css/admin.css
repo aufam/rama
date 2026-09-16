@@ -641,6 +641,49 @@ body.admin-body .modal-card {
   padding: 1.1rem 1.25rem !important;
 }
 
+/* ==========================================================================
+   Loading Skeleton - shown while Store.getProducts()/getOrders() are still
+   in flight on initial load (these hit the backend and can take a moment).
+   ========================================================================== */
+@keyframes admin-skeleton-pulse {
+  0% {
+    background-position: -200px 0;
+  }
+
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.admin-skeleton-block {
+  display: inline-block;
+  height: 11px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--admin-border) 25%, #f1f5f9 37%, var(--admin-border) 63%);
+  background-size: 400px 100%;
+  animation: admin-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-row-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.skeleton-row-wrapper .admin-skeleton-block.skeleton-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.skeleton-row-wrapper .skeleton-row-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 /* Pesanan (Orders) table cells - default .admin-table td has padding:0,
    so give order rows their own breathing room from the row/table borders */
 #admin-orders-table-body td {

@@ -806,6 +806,71 @@ body.kiosk-body {
   font-weight: 600;
 }
 
+/* ==========================================================================
+   Loading Skeletons - shown while Store.getProducts()/getCategories() are
+   still in flight (these calls hit the backend and can take a moment).
+   ========================================================================== */
+@keyframes skeleton-pulse {
+  0% {
+    background-position: -200px 0;
+  }
+
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.skeleton-block {
+  background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 37%, var(--gray-200) 63%);
+  background-size: 400px 100%;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.product-card-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.product-card-skeleton .skeleton-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-md);
+}
+
+.product-card-skeleton .skeleton-line {
+  height: 9px;
+  margin-top: 0.15rem;
+}
+
+.product-card-skeleton .skeleton-line.w-80 {
+  width: 80%;
+}
+
+.product-card-skeleton .skeleton-line.w-45 {
+  width: 45%;
+}
+
+.category-drawer-item-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.category-drawer-item-skeleton .skeleton-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.category-drawer-item-skeleton .skeleton-text {
+  height: 10px;
+  flex: 1;
+}
+
 /* Empty Catalog State */
 .empty-catalog {
   display: flex;

@@ -38,14 +38,77 @@ function getCategoryIcon(categoryId) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Tampilkan skeleton loading langsung agar tidak terlihat kosong/blank
+  // selagi Store.getCategories()/getProducts() masih memuat dari backend.
+  renderProductsLoadingSkeleton();
+  renderCategoryDrawerSkeleton();
+
   await loadInitialData();
   setupEventListeners();
   renderCartUI();
 });
 
+/**
+ * Skeleton placeholder untuk grid produk (#products-grid), ditampilkan sebelum
+ * data produk selesai dimuat dari backend.
+ */
+function renderProductsLoadingSkeleton(count = 8) {
+  const grid = document.getElementById('products-grid');
+  if (!grid) return;
+
+  const skeletonCardHtml = `
+    <div class="product-card-skeleton">
+      <div class="skeleton-block skeleton-image"></div>
+      <div class="skeleton-block skeleton-line w-80"></div>
+      <div class="skeleton-block skeleton-line w-45"></div>
+    </div>
+  `;
+
+  grid.innerHTML = skeletonCardHtml.repeat(count);
+}
+
+/**
+ * Skeleton placeholder untuk daftar kategori di sidebar drawer, ditampilkan
+ * sebelum data kategori selesai dimuat dari backend.
+ */
+function renderCategoryDrawerSkeleton(count = 6) {
+  const list = document.getElementById('category-drawer-list');
+  if (!list) return;
+
+  const skeletonItemHtml = `
+    <div class="category-drawer-item-skeleton">
+      <div class="skeleton-block skeleton-icon"></div>
+      <div class="skeleton-block skeleton-text"></div>
+    </div>
+  `;
+
+  list.innerHTML = skeletonItemHtml.repeat(count);
+}
+
+/**
+ * Ditampilkan di #products-grid jika pemuatan data awal gagal total,
+ * supaya pengguna tidak terjebak melihat skeleton loading selamanya.
+ */
+function renderProductsErrorState() {
+  const grid = document.getElementById('products-grid');
+  if (!grid) return;
+
+  grid.innerHTML = `
+    <div class="empty-catalog" style="grid-column: 1 / -1;">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <h3 style="font-weight: 700; color: var(--gray-700);">Gagal Memuat Produk</h3>
+      <p style="font-size: 0.85rem;">Silakan periksa koneksi internet Anda, lalu muat ulang halaman.</p>
+    </div>
+  `;
+}
+
 async function loadInitialData() {
   try {
     allCategories = await Store.getCategories();
+    // Render kategori sesegera tersedia, agar sidebar drawer tidak macet
+    // dalam kondisi skeleton loading jika pemuatan produk gagal setelah ini.
+    renderCategories();
+
     allProducts = await Store.getProducts();
     Store.updateCart(allProducts);
 
@@ -57,11 +120,13 @@ async function loadInitialData() {
       console.warn('Gagal memuat banner promo (opsional):', bannerErr);
     }
 
+    // Render ulang kategori (agar item pseudo "Promo" ikut muncul jika relevan)
     renderCategories();
     renderProducts();
   } catch (err) {
     console.error('Gagal memuat data awal produk:', err);
     showToast('Gagal memuat katalog produk', 'error');
+    renderProductsErrorState();
   }
 }
 

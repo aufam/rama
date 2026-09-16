@@ -69,10 +69,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
+  renderTableSkeleton();
+  renderOrdersTableSkeleton();
+
   await loadAdminData();
   setupAdminListeners();
   setupImageUploadHandlers();
 });
+
+/**
+ * Skeleton placeholder untuk tabel produk (#admin-table-body), ditampilkan
+ * sebelum Store.getProducts() selesai dimuat dari backend.
+ */
+function renderTableSkeleton(rows = 5) {
+  const tbody = document.getElementById('admin-table-body');
+  if (!tbody) return;
+
+  const rowHtml = `
+    <tr>
+      <td colspan="5" class="product-table-td">
+        <div class="skeleton-row-wrapper">
+          <div class="admin-skeleton-block skeleton-thumb"></div>
+          <div class="skeleton-row-lines">
+            <div class="admin-skeleton-block" style="width: 55%;"></div>
+            <div class="admin-skeleton-block" style="width: 30%;"></div>
+            <div class="admin-skeleton-block" style="width: 40%;"></div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+
+  tbody.innerHTML = rowHtml.repeat(rows);
+}
+
+/**
+ * Skeleton placeholder untuk tabel pesanan (#admin-orders-table-body),
+ * ditampilkan sebelum Store.getOrders() selesai dimuat dari backend.
+ */
+function renderOrdersTableSkeleton(rows = 5) {
+  const tbody = document.getElementById('admin-orders-table-body');
+  if (!tbody) return;
+
+  const rowHtml = `
+    <tr>
+      <td colspan="6">
+        <div class="admin-skeleton-block" style="width: 100%; height: 16px;"></div>
+      </td>
+    </tr>
+  `;
+
+  tbody.innerHTML = rowHtml.repeat(rows);
+}
 
 async function loadAdminData(local = false) {
   try {
@@ -97,7 +145,35 @@ async function loadAdminData(local = false) {
   } catch (err) {
     console.error('Gagal memuat data admin inventaris & pesanan:', err);
     alert('Terjadi kesalahan saat memuat data toko.');
+    renderTableErrorState();
+    renderOrdersTableErrorState();
   }
+}
+
+function renderTableErrorState() {
+  const tbody = document.getElementById('admin-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="5" style="text-align: center; padding: 2.5rem; color: var(--admin-text-muted);">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+        Gagal memuat data produk. Silakan muat ulang halaman.
+      </td>
+    </tr>
+  `;
+}
+
+function renderOrdersTableErrorState() {
+  const tbody = document.getElementById('admin-orders-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--admin-text-muted);">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+        Gagal memuat data pesanan. Silakan muat ulang halaman.
+      </td>
+    </tr>
+  `;
 }
 
 function updateOrdersBadge() {
