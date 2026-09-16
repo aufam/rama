@@ -41,21 +41,12 @@
       </div>
     </header>
 
-    <!-- Horizontal Category Quick Navigation Chips -->
-    <nav class="mobile-category-nav" id="category-chips-nav">
-      <!-- Injected dynamically via kiosk.js -->
-    </nav>
-
     <!-- Main Catalog View -->
     <main class="kiosk-main">
       <div class="main-topbar">
-        <div class="category-dropdown">
-          <select id="category-select" class="category-select">
-            <option value="">Semua Kategori</option>
-            <option value="promo">🔥 Promo Special</option>
-            <!-- Injected via kiosk.js -->
-          </select>
-        </div>
+        <button type="button" class="category-trigger-btn" id="category-trigger-btn">
+          <i class="fa-solid fa-layer-group" id="category-trigger-icon"></i>
+        </button>
         <div class="search-box">
           <i class="fa-solid fa-magnifying-glass"></i>
           <input type="text" id="search-input" class="search-input" placeholder="Cari barang, buah, bumbu..."
@@ -94,6 +85,24 @@
         </button>
       </div>
     </footer>
+
+    <!-- Collapsible Category Sidebar (mobile drawer) -->
+    <div class="category-drawer-overlay" id="category-drawer-overlay"></div>
+    <aside class="category-drawer" id="category-drawer">
+      <div class="category-drawer-header">
+        <h3><i class="fa-solid fa-layer-group"></i> Kategori</h3>
+        <button type="button" class="category-drawer-close" id="category-drawer-close" aria-label="Tutup">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="category-drawer-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="category-search-input" placeholder="Cari kategori..." autocomplete="off">
+      </div>
+      <div class="category-drawer-list" id="category-drawer-list">
+        <!-- Injected via kiosk.js -->
+      </div>
+    </aside>
 
   </div>
 
@@ -143,7 +152,7 @@
           <div class="form-group" style="margin-top: 1rem;">
             <label class="form-label" for="modal-item-notes">Catatan Tambahan untuk Item Ini (Opsional):</label>
             <input type="text" id="modal-item-notes" class="form-control"
-              placeholder="Contoh: Sedikit manis, kemasan dipisah, dll.">
+              placeholder="Contoh: Pisahkan dengan item lain.">
           </div>
         </div>
       </div>

@@ -10,6 +10,7 @@ let allCategories = [];
 let allBanners = { landscape: [], square1: [], square2: [] };
 let activeCategoryId = null; // null = semua kategori, 'promo' = promo, or category ID
 let searchQuery = '';
+let categorySearchQuery = ''; // Kata kunci pencarian di dalam sidebar drawer kategori
 
 // Timer auto-swipe untuk tiap slot carousel banner promo homepage
 let bannerAutoTimers = [];
@@ -37,7 +38,6 @@ function getCategoryIcon(categoryId) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  document.body.classList.add("no-scroll");
   await loadInitialData();
   setupEventListeners();
   renderCartUI();
@@ -72,6 +72,31 @@ function setupEventListeners() {
     searchInput.addEventListener('input', (e) => {
       searchQuery = e.target.value.toLowerCase().trim();
       renderProducts();
+    });
+  }
+
+  // Tombol pemicu sidebar kategori & interaksi drawer-nya
+  const categoryTriggerBtn = document.getElementById('category-trigger-btn');
+  if (categoryTriggerBtn) {
+    categoryTriggerBtn.addEventListener('click', openCategoryDrawer);
+  }
+
+  const categoryDrawerClose = document.getElementById('category-drawer-close');
+  if (categoryDrawerClose) {
+    categoryDrawerClose.addEventListener('click', closeCategoryDrawer);
+  }
+
+  const categoryDrawerOverlay = document.getElementById('category-drawer-overlay');
+  if (categoryDrawerOverlay) {
+    categoryDrawerOverlay.addEventListener('click', closeCategoryDrawer);
+  }
+
+  // Kotak pencarian kategori di dalam sidebar drawer
+  const categorySearchInput = document.getElementById('category-search-input');
+  if (categorySearchInput) {
+    categorySearchInput.addEventListener('input', (e) => {
+      categorySearchQuery = e.target.value;
+      renderCategoryDrawerList();
     });
   }
 
@@ -195,70 +220,114 @@ function setupEventListeners() {
 }
 
 function renderCategories() {
-  const categorySelect = document.getElementById('category-select');
-  const categoryChipsNav = document.getElementById('category-chips-nav');
+  renderCategoryDrawerList();
+  updateCategoryTriggerLabel();
+}
 
-  if (categorySelect) {
-    let optionsHtml = `<option value="">Semua Kategori</option>`;
-    optionsHtml += `<option value="promo">🔥 Promo Special</option>`;
-    optionsHtml += allCategories.map(cat => `<option value="${cat.id}">${cat.id}</option>`).join('');
-    categorySelect.innerHTML = optionsHtml;
-    categorySelect.value = activeCategoryId || '';
+/**
+ * Bangun daftar item kategori untuk drawer: "Semua Kategori", "Promo",
+ * lalu seluruh kategori asli.
+ */
+function getCategoryDrawerItems() {
+  const items = [
+    { id: '', name: 'Semua Kategori', icon: 'fa-layer-group', isPromo: false }
+  ];
 
-    categorySelect.addEventListener('change', (e) => {
-      activeCategoryId = e.target.value || null;
-      updateActiveCategoryChipsUI();
-      renderProducts();
-    });
+  if (allProducts.some(p => Number(p.discount) > 0)) {
+    items.push({ id: 'promo', name: 'Promo', icon: 'fa-fire', isPromo: true });
   }
 
-  if (categoryChipsNav) {
-    let chipsHtml = `
-      <button class="cat-chip-btn ${!activeCategoryId ? 'active' : ''}" data-cat="">
-        <i class="fa-solid fa-layer-group"></i> Semua
-      </button>
-      <button class="cat-chip-btn cat-chip-promo ${activeCategoryId === 'promo' ? 'active' : ''}" data-cat="promo">
-        <i class="fa-solid fa-fire"></i> Promo
+  allCategories.forEach(cat => {
+    items.push({ id: cat.id, name: cat.id, icon: cat.icon || 'fa-box', isPromo: false });
+  });
+
+  return items;
+}
+
+/**
+ * Render daftar kategori di dalam sidebar drawer, terfilter oleh kata kunci pencarian kategori.
+ */
+function renderCategoryDrawerList() {
+  const list = document.getElementById('category-drawer-list');
+  if (!list) return;
+
+  const q = categorySearchQuery.trim().toLowerCase();
+  let items = getCategoryDrawerItems();
+
+  if (q) {
+    items = items.filter(item => item.name.toLowerCase().includes(q));
+  }
+
+  if (items.length === 0) {
+    list.innerHTML = `<div class="category-drawer-empty">Kategori tidak ditemukan.</div>`;
+    return;
+  }
+
+  list.innerHTML = items.map(item => {
+    const isActive = (!activeCategoryId && item.id === '') || activeCategoryId === item.id;
+    return `
+      <button type="button" class="category-drawer-item ${item.isPromo ? 'cat-chip-promo' : ''} ${isActive ? 'active' : ''}" data-cat="${item.id}">
+        <i class="fa-solid ${item.icon}"></i>
+        <span>${item.name}</span>
       </button>
     `;
+  }).join('');
 
-    chipsHtml += allCategories.map(cat => `
-      <button class="cat-chip-btn ${activeCategoryId === cat.id ? 'active' : ''}" data-cat="${cat.id}">
-        <i class="fa-solid ${cat.icon || 'fa-box'}"></i> ${cat.id}
-      </button>
-    `).join('');
+  list.querySelectorAll('.category-drawer-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const catValue = btn.getAttribute('data-cat');
+      activeCategoryId = catValue || null;
 
-    categoryChipsNav.innerHTML = chipsHtml;
+      updateActiveCategoryDrawerUI();
+      updateCategoryTriggerLabel();
+      renderProducts();
+      closeCategoryDrawer();
 
-    categoryChipsNav.querySelectorAll('.cat-chip-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const catValue = btn.getAttribute('data-cat');
-        activeCategoryId = catValue || null;
-
-        if (categorySelect) {
-          categorySelect.value = activeCategoryId || '';
-        }
-
-        updateActiveCategoryChipsUI();
-        renderProducts();
-      });
+      const container = document.querySelector('.products-container');
+      if (container) container.scrollTop = 0;
     });
+  });
+}
+
+function updateActiveCategoryDrawerUI() {
+  const list = document.getElementById('category-drawer-list');
+  if (!list) return;
+
+  list.querySelectorAll('.category-drawer-item').forEach(btn => {
+    const catValue = btn.getAttribute('data-cat') || null;
+    btn.classList.toggle('active', (!activeCategoryId && !catValue) || activeCategoryId === catValue);
+  });
+}
+
+/**
+ * Update label & ikon tombol pemicu drawer kategori di topbar sesuai kategori aktif.
+ */
+function updateCategoryTriggerLabel() {
+  const labelEl = document.getElementById('category-trigger-label');
+  const iconEl = document.getElementById('category-trigger-icon');
+  if (!labelEl || !iconEl) return;
+
+  if (!activeCategoryId) {
+    labelEl.textContent = 'Semua Kategori';
+    iconEl.className = 'fa-solid fa-layer-group';
+  } else if (activeCategoryId === 'promo') {
+    labelEl.textContent = 'Promo';
+    iconEl.className = 'fa-solid fa-fire';
+  } else {
+    const cat = allCategories.find(c => c.id === activeCategoryId);
+    labelEl.textContent = cat ? cat.id : activeCategoryId;
+    iconEl.className = `fa-solid ${(cat && cat.icon) || 'fa-box'}`;
   }
 }
 
-function updateActiveCategoryChipsUI() {
-  const chipsNav = document.getElementById('category-chips-nav');
-  if (!chipsNav) return;
+function openCategoryDrawer() {
+  document.getElementById('category-drawer')?.classList.add('open');
+  document.getElementById('category-drawer-overlay')?.classList.add('open');
+}
 
-  chipsNav.querySelectorAll('.cat-chip-btn').forEach(btn => {
-    const catValue = btn.getAttribute('data-cat') || null;
-    if ((!activeCategoryId && !catValue) || (activeCategoryId === catValue)) {
-      btn.classList.add('active');
-      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    } else {
-      btn.classList.remove('active');
-    }
-  });
+function closeCategoryDrawer() {
+  document.getElementById('category-drawer')?.classList.remove('open');
+  document.getElementById('category-drawer-overlay')?.classList.remove('open');
 }
 
 /**
@@ -266,11 +335,8 @@ function updateActiveCategoryChipsUI() {
  */
 window.selectCategoryDirectly = function(catId) {
   activeCategoryId = catId || null;
-  const categorySelect = document.getElementById('category-select');
-  if (categorySelect) {
-    categorySelect.value = activeCategoryId || '';
-  }
-  updateActiveCategoryChipsUI();
+  updateActiveCategoryDrawerUI();
+  updateCategoryTriggerLabel();
   renderProducts();
 
   const container = document.querySelector('.products-container');

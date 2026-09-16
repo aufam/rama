@@ -334,9 +334,52 @@ function setupImageUploadHandlers() {
   });
 
   dropzone.addEventListener('drop', async (e) => {
-    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
-      await processSelectedImageFile(e.dataTransfer.files[0]);
+    const dt = e.dataTransfer;
+
+    if (!dt) return;
+
+    // 1. Normal file drop
+    if (dt.files?.length > 0) {
+      await processSelectedImageFile(dt.files[0]);
+      return;
     }
+
+    // 2. Image dragged from a webpage
+    const html = dt.getData('text/html');
+
+    if (html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const img = doc.querySelector('img[src]');
+
+      if (img) {
+        const imageUrl = img.src;
+
+        console.log('Image URL:', imageUrl);
+
+        try {
+          const response = await fetch(imageUrl);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const blob = await response.blob();
+
+          const file = new File(
+            [blob],
+            'dropped-image',
+            { type: blob.type }
+          );
+
+          await processSelectedImageFile(file);
+          return;
+        } catch (err) {
+          console.error('Failed to download dropped image:', err);
+        }
+      }
+    }
+
+    console.log('Unsupported drop:', [...dt.types]);
   });
 
   if (btnRemoveImg) {
