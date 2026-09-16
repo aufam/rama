@@ -16,11 +16,11 @@ void rama::App::update_banner(const Banner &banner) {
 
     const cpx::sql::Statement<> begin_transaction{"begin transaction"};
     const cpx::sql::Statement<> commit{"commit"};
-    const cpx::sql::Statement<> roleback{"roleback"};
+    const cpx::sql::Statement<> rollback{"rollback"};
 
     bool ok = false;
     db(begin_transaction);
-    cpx::defer _ = [&]() { db(ok ? commit : roleback); };
+    cpx::defer _ = [&]() { db(ok ? commit : rollback); };
 
     db(cpx::sql::delete_from(landscape_banners));
     db(cpx::sql::delete_from(square1_banners));

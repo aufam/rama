@@ -42,7 +42,7 @@ auto rama::App::get_products() -> std::vector<Product> {
                     products.description
     )
                     .from(products)
-                    .order_by(products.name);
+                    .order_by(products.category_id, products.discount.desc(), products.priority.desc(), products.name);
 
     for (auto row = db(stmt); !row.is_done(); row.next()) {
         Product p;

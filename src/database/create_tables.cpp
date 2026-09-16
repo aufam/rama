@@ -16,7 +16,7 @@ void rama::App::create_tables() {
     static constexpr database::Square1Banner   square1_banners;
     static constexpr database::Square2Banner   square2_banners;
 
-    cpx::sql::Statement<> foreign_keys{"PRAGMA foreign_keys = ON"};
+    const cpx::sql::Statement<> foreign_keys{"PRAGMA foreign_keys = ON"};
     db(foreign_keys);
 
     db(create_table_if_not_exists<products>(
@@ -28,9 +28,16 @@ void rama::App::create_tables() {
         products.sale_price,
         products.category_id,
         products.unit,
-        products.image,
-        products.description
+        products.description,
+        products.priority,
+        products.image
     ));
+
+    try {
+        db(cpx::sql::alter_table<products>.add_column(products.priority));
+    } catch (std::exception &e) {
+        std::ignore = e;
+    }
 
     db(create_table_if_not_exists<categories>(
         categories.id, //

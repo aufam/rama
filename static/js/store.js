@@ -521,11 +521,40 @@ const Store = {
   },
 
   async downloadCSV(password) {
-    throw new Error('downloadCSV belum diimplementasikan — perlu integrasi Backend API (lihat TODO di store.js).');
+    const response = await fetch('api/auth/tables', {
+      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'X-Pass': password },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const blob = await response.blob();
+
+    const filename = decodeURIComponent(
+      new URL(response.url).pathname.split('/').pop()
+    );
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = filename;
+    link.click();
+
+    URL.revokeObjectURL(url);
   },
 
   async uploadCSV(file, password) {
-    throw new Error('uploadCSV belum diimplementasikan — perlu integrasi Backend API (lihat TODO di store.js).');
+    const response = await fetch('api/auth/tables', {
+      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'X-Pass': password, 'Content-Type': 'text/csv', },
+      method: 'POST',
+      body: file,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
   },
 
   /**

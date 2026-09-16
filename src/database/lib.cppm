@@ -34,6 +34,7 @@ struct rama::database::Product {
     Column<Product, std::string_view> unit        = "unit text not null default 'buah'";
     Column<Product, std::string_view> image       = "image text not null default ''";
     Column<Product, std::string_view> description = "description text not null default ''";
+    Column<Product, long long>        priority    = "priority integer not null default 0";
 };
 
 struct rama::database::Category {

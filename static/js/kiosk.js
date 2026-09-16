@@ -334,7 +334,7 @@ function generateProductCardHtml(p) {
           ${thumbHtml}
         </div>
         <h4 class="product-name" title="${p.name}">${p.name}</h4>
-        <p class="product-desc">${p.description || 'Pilihan segar & berkualitas Rama Swalayan.'}</p>
+        <p class="product-desc">${p.description || '-'}</p>
       </div>
       <div class="product-card-bottom">
         ${priceHtml}

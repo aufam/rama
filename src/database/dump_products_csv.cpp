@@ -11,23 +11,6 @@ import fmt;
 
 namespace sql = cpx::sql;
 
-void write_csv_field(std::ostream &out, std::string_view value) {
-    const bool quote = value.find_first_of(",\"\r\n") != std::string_view::npos;
-
-    if (!quote) {
-        out << value;
-        return;
-    }
-
-    out << '"';
-    for (const char c : value) {
-        if (c == '"')
-            out << "\"\"";
-        else
-            out << c;
-    }
-    out << '"';
-}
 
 void write_csv_row(std::ostream &out, std::initializer_list<std::string_view> fields) {
     std::string row;
@@ -95,16 +78,19 @@ void rama::App::dump_products_csv(const std::string &path) {
 
     write_csv_row(
         out,
-        {"KODE_BRG",
-         "NAMA_BRG",
-         "BARCODE",
-         "HARGA SBLM DISKON",
-         "DISC_JUAL",
-         "HARGA SDH DISKON",
-         "KATEGORI",
-         "UNIT",
-         "GAMBAR",
-         "DESKRIPSI"}
+        {
+            "KODE_BRG",
+            "NAMA_BRG",
+            "BARCODE",
+            "HARGA SBLM DISKON",
+            "DISC_JUAL",
+            "HARGA SDH DISKON",
+            "KATEGORI",
+            "UNIT",
+            "PRIORITAS",
+            "DESKRIPSI",
+            "GAMBAR",
+        }
     );
 
     auto stmt = sql::select(
@@ -116,19 +102,21 @@ void rama::App::dump_products_csv(const std::string &path) {
                     products.sale_price,
                     products.category_id,
                     products.unit,
-                    products.image,
-                    products.description
+                    products.priority,
+                    products.description,
+                    products.image
     )
                     .from(products)
-                    .order_by(products.name);
+                    .order_by(products.category_id, products.priority, products.name);
 
     for (auto row = db(stmt); !row.is_done(); row.next()) {
-        const auto [id, name, barcode, price, discount, sale_price, category, unit, image, description] = row.get();
+        const auto [id, name, barcode, price, discount, sale_price, category, unit, priority, description, image] = row.get();
 
         auto sprice    = int_to_rupiah(price);
         auto sdiscount = fmt::format("{}", discount);
         auto ssale     = int_to_rupiah(sale_price);
+        auto spriority = fmt::format("{}", priority);
 
-        write_csv_row(out, {id, name, barcode, sprice, sdiscount, ssale, category, unit, image, description});
+        write_csv_row(out, {id, name, barcode, sprice, sdiscount, ssale, category, unit, spriority, description, image});
     }
 }
