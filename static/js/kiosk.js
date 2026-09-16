@@ -37,6 +37,7 @@ function getCategoryIcon(categoryId) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  document.body.classList.add("no-scroll");
   await loadInitialData();
   setupEventListeners();
   renderCartUI();
@@ -287,7 +288,7 @@ function generateProductCardHtml(p) {
 
   const imageURL = Store.getProductImage(p);
   const thumbHtml = imageURL
-    ? `<img src="${imageURL}" alt="${p.name}">`
+    ? `<img src="${imageURL}" alt="${p.name}" loading="lazy">`
     : `<i class="fa-solid ${icon}"></i>`;
 
   const price = Number(p.price) || 0;
@@ -308,9 +309,7 @@ function generateProductCardHtml(p) {
   const priceHtml = isPromo
     ? `
     <div class="product-price-container">
-      <div class="price-row-top">
-        <span class="product-price-original">${Store.formatCurrency(price)}</span>
-      </div>
+      <span class="product-price-original">${Store.formatCurrency(price)}</span>
       <div class="price-row-main">
         <span class="product-price-sale">${Store.formatCurrency(salePrice)}</span>
         <span class="product-unit">/${p.unit || 'item'}</span>
@@ -326,21 +325,26 @@ function generateProductCardHtml(p) {
     </div>
   `;
 
+  // Tombol tambah mengambang di atas gambar produk (gaya Sayurbox), disembunyikan jika stok habis
+  const addButtonHtml = isOutOfStock
+    ? ''
+    : `
+    <button class="btn-add-float ${isPromo ? 'btn-add-float-promo' : ''}" onclick="event.stopPropagation(); quickAddToCart('${p.id}')" aria-label="Tambah ke keranjang">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+  `;
+
   return `
     <div class="product-card ${isPromo ? 'is-promo-card' : ''}" onclick="openProductDetailModal('${p.id}')">
-      ${promoBadgeHtml}
-      <div class="product-card-top">
-        <div class="product-icon-wrap">
-          ${thumbHtml}
-        </div>
-        <h4 class="product-name" title="${p.name}">${p.name}</h4>
-        <p class="product-desc">${p.description || '-'}</p>
+      <div class="product-image-wrap ${isOutOfStock ? 'is-out-of-stock' : ''}">
+        ${thumbHtml}
+        ${promoBadgeHtml}
+        ${addButtonHtml}
+        ${isOutOfStock ? `<div class="out-of-stock-overlay"><span>Stok Habis</span></div>` : ''}
       </div>
-      <div class="product-card-bottom">
+      <div class="product-info">
+        <h4 class="product-name" title="${p.name}">${p.name}</h4>
         ${priceHtml}
-        <button class="btn-add-kiosk ${isPromo ? 'btn-add-promo' : ''}" ${isOutOfStock ? 'disabled' : ''} onclick="event.stopPropagation(); ${isOutOfStock ? '' : `quickAddToCart('${p.id}')`}">
-          <i class="fa-solid fa-plus"></i> ${isOutOfStock ? 'Habis' : 'Tambah'}
-        </button>
       </div>
     </div>
   `;
@@ -460,21 +464,20 @@ function loadMoreCategories() {
     const productCardsHtml = previewProducts.map(p => generateProductCardHtml(p)).join('');
 
     return `
-      <div class="category-section-card ${cat.isPromoSection ? 'is-promo-section' : ''}">
+      <div class="category-section ${cat.isPromoSection ? 'is-promo-section' : ''}">
         <div class="category-section-header">
           <div class="category-section-title">
             <i class="fa-solid ${cat.icon}"></i>
             <span>${cat.name}</span>
           </div>
-          <span class="category-section-count">${cat.products.length} Produk</span>
+          <button class="category-section-viewall" onclick="selectCategoryDirectly('${cat.id}')">
+            <span>Lihat Semua</span>
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
         </div>
         <div class="category-section-grid">
           ${productCardsHtml}
         </div>
-        <button class="btn-view-all-cat" onclick="selectCategoryDirectly('${cat.id}')">
-          <span>Lihat Semua Produk ${cat.isPromoSection ? 'Promo' : cat.name} (${cat.products.length})</span>
-          <i class="fa-solid fa-arrow-right"></i>
-        </button>
       </div>
     `;
   }).join('');
@@ -623,7 +626,7 @@ function openProductDetailModal(productId) {
   const effectivePrice = discount > 0 ? (Number(product.salePrice) || price * (1 - discount / 100)) : price;
 
   document.getElementById('modal-item-title').textContent = product.name;
-  document.getElementById('modal-item-desc').textContent = product.description || 'Produk segar dan berkualitas Rama Swalayan.';
+  document.getElementById('modal-item-desc').textContent = product.description || '-';
   document.getElementById('modal-item-price').textContent = `${Store.formatCurrency(effectivePrice)} / ${product.unit || 'item'}`;
 
   const modalIcon = document.getElementById('modal-item-icon');

@@ -76,6 +76,15 @@ body {
   line-height: 1.5;
 }
 
+/* Kiosk homepage is a full-height app shell with its own internal scroll areas
+   (.products-container), so lock the outer body from scrolling/bouncing.
+   Scoped to body.kiosk-body only (set on index.html) so this never leaks into
+   order.html (.tracking-body) or admin.html (.admin-body), which load this
+   same stylesheet but manage their own scrolling. */
+body.kiosk-body {
+  overflow: hidden;
+}
+
 /* Main Mobile Shell Container - full-bleed, no card/frame treatment */
 .kiosk-app {
   display: flex;
@@ -455,32 +464,26 @@ body {
   background: var(--white);
 }
 
-/* Category Section Card (Semua Kategori View) */
-.category-section-card {
+/* Category Section (Semua Kategori View) - plain section, no boxed card */
+.category-section {
   grid-column: 1 / -1;
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
-  padding: 0.85rem;
-  margin-bottom: 0.75rem;
-  box-shadow: var(--shadow-xs);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
+  margin-bottom: 1.15rem;
 }
 
 .category-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--gray-200);
+  gap: 0.5rem;
 }
 
 .category-section-title {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   font-size: 0.95rem;
   font-weight: 800;
   color: var(--gray-900);
@@ -488,112 +491,127 @@ body {
 
 .category-section-title i {
   color: var(--primary);
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
-.category-section-card.is-promo-section .category-section-title i {
+.category-section.is-promo-section .category-section-title i {
   color: var(--promo-red);
 }
 
-.category-section-count {
-  font-size: 0.7rem;
+/* View All - lightweight text link instead of a full button */
+.category-section-viewall {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  padding: 0.15rem 0;
+  color: var(--primary-hover);
+  font-size: 0.775rem;
   font-weight: 700;
-  color: var(--gray-600);
-  background: var(--gray-100);
-  padding: 0.2rem 0.55rem;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--gray-200);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.category-section-viewall i {
+  font-size: 0.65rem;
+  transition: var(--transition);
+}
+
+.category-section-viewall:active i {
+  transform: translateX(2px);
 }
 
 .category-section-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 0.9rem 0.75rem;
 }
 
-/* View All Category Button - High Contrast Normal & Hover State */
-.btn-view-all-cat {
-  width: 100%;
-  padding: 0.65rem 0.85rem;
-  background: var(--primary-light);
-  color: #047857 !important;
-  border: 1.5px solid var(--primary-border);
-  border-radius: var(--radius-full);
-  font-size: 0.8rem;
-  font-weight: 800;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  transition: var(--transition-bounce);
-}
-
-.btn-view-all-cat span,
-.btn-view-all-cat i {
-  color: #047857 !important;
-  transition: var(--transition);
-}
-
-.btn-view-all-cat:hover {
-  background: #047857 !important;
-  color: #ffffff !important;
-  border-color: #047857 !important;
-  box-shadow: 0 4px 12px rgba(4, 120, 87, 0.35);
-}
-
-.btn-view-all-cat:hover span,
-.btn-view-all-cat:hover i {
-  color: #ffffff !important;
-}
-
-.btn-view-all-cat:active {
-  transform: scale(0.98);
-}
-
-/* Modern Product Card */
+/* ==========================================================================
+   Product Card - Sayurbox-style: image-forward, no bordered box, no shadow.
+   The image tile itself carries the visual weight; text sits directly on
+   the page background.
+   ========================================================================== */
 .product-card {
-  background: var(--white);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-md);
-  padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  position: relative;
   cursor: pointer;
-  box-shadow: var(--shadow-xs);
-  transition: var(--transition);
   user-select: none;
-  min-height: 250px;
-  overflow: hidden;
-}
-
-.product-card:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--primary-border);
+  position: relative;
 }
 
 .product-card:active {
   transform: scale(0.98);
 }
 
-.product-card.is-promo-card {
-  border-color: rgba(239, 68, 68, 0.3);
-  background: linear-gradient(180deg, #fff 0%, #fffbfb 100%);
+/* Base container used by the "Tambah ke Keranjang" modal thumbnail
+   (index.html #modal-item-icon-wrap) - sizing/radius set inline per usage */
+.product-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-100);
+  color: var(--primary);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Product image tile - square, rounded, holds badge + floating add button */
+.product-image-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: var(--gray-100);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--primary);
+  overflow: hidden;
+  position: relative;
+}
+
+.product-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-image-wrap.is-out-of-stock img {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.out-of-stock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.out-of-stock-overlay span {
+  background: rgba(15, 23, 42, 0.75);
+  color: var(--white);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
 }
 
 /* Promo Tag Badge */
 .promo-badge-tag {
   position: absolute;
-  top: 0.5rem;
-  left: 0.5rem;
-  z-index: 10;
+  top: 0.45rem;
+  left: 0.45rem;
+  z-index: 2;
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: var(--white);
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 800;
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.45rem;
   border-radius: var(--radius-full);
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
   display: flex;
@@ -603,96 +621,76 @@ body {
 
 .promo-badge-tag i {
   color: #fef08a;
-  font-size: 0.6rem;
+  font-size: 0.58rem;
 }
 
-.product-card-top {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  flex: 1;
-  width: 100%;
-}
-
-/* Aspect Ratio Square Image Container */
-.product-icon-wrap {
-  width: calc(100% + 1.5rem);
-  aspect-ratio: 1 / 1;
-  margin-top: -0.75rem;
-  margin-left: -0.75rem;
-  margin-right: -0.75rem;
-  margin-bottom: 0.6rem;
-  background: var(--gray-100);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+/* Floating circular add-to-cart button, sits on top of the image */
+.btn-add-float {
+  position: absolute;
+  bottom: 0.4rem;
+  right: 0.4rem;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--primary);
+  border: none;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  color: var(--primary);
-  transition: var(--transition);
-  overflow: hidden;
-  flex-shrink: 0;
-  position: relative;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: var(--transition-bounce);
 }
 
-.product-icon-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+.btn-add-float:active {
+  background: var(--primary);
+  color: var(--white);
+  transform: scale(0.88);
+}
+
+.btn-add-float-promo {
+  color: var(--promo-red);
+}
+
+.btn-add-float-promo:active {
+  background: var(--promo-red);
+  color: var(--white);
+}
+
+/* Product info below the image */
+.product-info {
+  padding: 0.45rem 0.1rem 0 0.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .product-name {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  line-height: 1.25;
-  margin-bottom: 0.2rem;
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
-  min-height: 2.2em;
-  padding: 0 0.1rem;
-}
-
-.product-desc {
-  font-size: 0.72rem;
-  color: var(--gray-600);
-  line-height: 1.25;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-  margin-bottom: 0.4rem;
-  padding: 0 0.1rem;
-}
-
-.product-card-bottom {
-  margin-top: auto;
-  width: 100%;
+  min-height: 2em;
 }
 
 .product-price-container {
   display: flex;
   flex-direction: column;
-  margin-bottom: 0.45rem;
-  text-align: left;
-}
-
-.price-row-top {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
 }
 
 .product-price-original {
+  display: block;
   text-decoration: line-through;
-  color: var(--gray-500);
-  font-size: 0.72rem;
+  color: var(--gray-400);
+  font-size: 0.68rem;
   font-weight: 600;
 }
 
@@ -703,7 +701,7 @@ body {
 }
 
 .product-price-sale {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 800;
   color: var(--gray-900);
 }
@@ -713,43 +711,9 @@ body {
 }
 
 .product-unit {
-  font-size: 0.68rem;
-  color: var(--gray-600);
+  font-size: 0.66rem;
+  color: var(--gray-500);
   font-weight: 600;
-}
-
-.btn-add-kiosk {
-  width: 100%;
-  padding: 0.5rem 0.5rem;
-  border-radius: var(--radius-full);
-  background: var(--primary-light);
-  color: var(--primary-hover);
-  border: 1px solid var(--primary-border);
-  font-weight: 800;
-  font-size: 0.78rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  transition: var(--transition-bounce);
-}
-
-.btn-add-kiosk:active {
-  background: var(--primary);
-  color: var(--white);
-  transform: scale(0.95);
-}
-
-.btn-add-promo {
-  background: var(--promo-red-light);
-  color: var(--promo-red);
-  border-color: rgba(239, 68, 68, 0.4);
-}
-
-.btn-add-promo:active {
-  background: var(--promo-red);
-  color: var(--white);
 }
 
 /* Empty Catalog State */
