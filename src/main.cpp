@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <reproc++/run.hpp>
+#include <zlib.h>
 
 import brb;
 import fmt;
@@ -54,6 +55,8 @@ struct Branch {
         cpx::field<&Branch::password>    = "password",
     };
 };
+
+brb::awaitable<void> gzip(brb::Context &);
 
 int main(int argc, char **argv) {
     const auto args = cpx::cli11::parse<Args>("Rama swalayan", argc, argv);
@@ -149,6 +152,8 @@ int main(int argc, char **argv) {
             res.prepare_payload();
             co_await brb::http::async_write(*c.stream, res);
         });
+
+        router.use(root + "/api/", gzip);
 
         router.use(root + "/api/auth/", [&](brb::Context &c) -> boost::asio::awaitable<void> {
             auto auth = c.req()[brb::http::field::authorization];
@@ -572,4 +577,143 @@ int main(int argc, char **argv) {
         ts[i].join();
 
     return 0;
+}
+
+bool accepts_gzip(const brb::request_header &req) {
+    const auto value = req[brb::http::field::accept_encoding];
+
+    if (value.empty())
+        return false;
+
+    std::string_view header{value};
+
+    while (!header.empty()) {
+        // Find the next encoding.
+        const auto comma = header.find(',');
+        auto       item  = header.substr(0, comma);
+
+        // Trim whitespace.
+        while (!item.empty() && std::isspace(static_cast<unsigned char>(item.front())))
+            item.remove_prefix(1);
+
+        while (!item.empty() && std::isspace(static_cast<unsigned char>(item.back())))
+            item.remove_suffix(1);
+
+        // Separate encoding from parameters.
+        const auto semi     = item.find(';');
+        auto       encoding = item.substr(0, semi);
+
+        while (!encoding.empty() && std::isspace(static_cast<unsigned char>(encoding.front())))
+            encoding.remove_prefix(1);
+
+        while (!encoding.empty() && std::isspace(static_cast<unsigned char>(encoding.back())))
+            encoding.remove_suffix(1);
+
+        // Case-insensitive "gzip".
+        if (encoding.size() == 4 && std::tolower(static_cast<unsigned char>(encoding[0])) == 'g' &&
+            std::tolower(static_cast<unsigned char>(encoding[1])) == 'z' &&
+            std::tolower(static_cast<unsigned char>(encoding[2])) == 'i' &&
+            std::tolower(static_cast<unsigned char>(encoding[3])) == 'p') {
+            // Check gzip;q=0.
+            if (semi != std::string_view::npos) {
+                auto params = item.substr(semi + 1);
+
+                if (params.find("q=0") != std::string_view::npos || params.find("q=0.0") != std::string_view::npos ||
+                    params.find("q=0.00") != std::string_view::npos || params.find("q=0.000") != std::string_view::npos)
+                    return false;
+            }
+
+            return true;
+        }
+
+        if (comma == std::string_view::npos)
+            break;
+
+        header.remove_prefix(comma + 1);
+    }
+
+    return false;
+}
+
+// -----------------------------------------------------------------------------
+// Compressible response
+// -----------------------------------------------------------------------------
+bool compressible(const brb::response_header &res) {
+    // Only compress successful responses with a body.
+    if (res.result_int() < 200 || res.result_int() >= 300)
+        return false;
+
+    // Don't compress something that is already encoded.
+    if (res.find(brb::http::field::content_encoding) != res.end())
+        return false;
+
+    return true;
+}
+
+// -----------------------------------------------------------------------------
+// Gzip
+// -----------------------------------------------------------------------------
+
+void compress_response(std::string &body) {
+    if (body.empty())
+        return;
+
+    z_stream zs{};
+
+    const int ret = deflateInit2(
+        &zs,
+        Z_DEFAULT_COMPRESSION,
+        Z_DEFLATED,
+        15 + 16, // gzip wrapper
+        8,
+        Z_DEFAULT_STRATEGY
+    );
+
+    if (ret != Z_OK)
+        throw std::runtime_error("gzip: deflateInit2 failed");
+
+    // Ask zlib for a safe upper bound.
+    std::string compressed;
+    compressed.resize(deflateBound(&zs, static_cast<uLong>(body.size())));
+
+    zs.next_in  = reinterpret_cast<Bytef *>(const_cast<char *>(body.data()));
+    zs.avail_in = static_cast<uInt>(body.size());
+
+    zs.next_out  = reinterpret_cast<Bytef *>(compressed.data());
+    zs.avail_out = static_cast<uInt>(compressed.size());
+
+    const int result = deflate(&zs, Z_FINISH);
+
+    if (result != Z_STREAM_END) {
+        deflateEnd(&zs);
+        throw std::runtime_error("gzip: deflate failed");
+    }
+
+    compressed.resize(zs.total_out);
+
+    deflateEnd(&zs);
+
+    body = std::move(compressed);
+}
+
+brb::awaitable<void> gzip(brb::Context &c) {
+    co_await c.next();
+
+    auto &req = c.req();
+    auto &res = c.response_string();
+
+    if (!accepts_gzip(req))
+        co_return;
+
+    if (!compressible(res))
+        co_return;
+
+    // Avoid wasting CPU/memory for tiny responses.
+    if (res.body().size() < 512)
+        co_return;
+
+    compress_response(res.body());
+
+    res.set(brb::http::field::content_encoding, "gzip");
+    res.set(brb::http::field::vary, "Accept-Encoding");
 }
