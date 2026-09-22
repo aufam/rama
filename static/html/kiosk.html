@@ -44,8 +44,8 @@
     <!-- Main Catalog View -->
     <main class="kiosk-main">
       <div class="main-topbar">
-        <button type="button" class="category-trigger-btn" id="category-trigger-btn">
-          <i class="fa-solid fa-layer-group" id="category-trigger-icon"></i>
+        <button type="button" class="category-menu-btn" id="category-trigger-btn" aria-label="Buka Kategori">
+          <i class="fa-solid fa-bars"></i>
         </button>
         <div class="search-box">
           <i class="fa-solid fa-magnifying-glass"></i>
@@ -56,7 +56,6 @@
 
       <div class="products-container">
         <div class="products-grid" id="products-grid">
-          loading...
           <!-- Injected via kiosk.js -->
         </div>
       </div>
@@ -103,6 +102,12 @@
         <!-- Injected via kiosk.js -->
       </div>
     </aside>
+
+    <!-- Floating CS WhatsApp Button (static, always visible) -->
+    <a href="#" target="_blank" rel="noopener" class="btn-wa-float" id="btn-wa-float"
+      aria-label="Hubungi Customer Service via WhatsApp">
+      <i class="fa-brands fa-whatsapp"></i>
+    </a>
 
   </div>
 

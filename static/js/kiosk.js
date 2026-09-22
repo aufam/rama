@@ -40,6 +40,9 @@ function getCategoryIcon(categoryId) {
 document.addEventListener('DOMContentLoaded', async () => {
   // Tampilkan skeleton loading langsung agar tidak terlihat kosong/blank
   // selagi Store.getCategories()/getProducts() masih memuat dari backend.
+  const urlParams = new URLSearchParams(window.location.search);
+  activeCategoryId = urlParams.get('category');
+
   renderProductsLoadingSkeleton();
   renderCategoryDrawerSkeleton();
 
@@ -165,6 +168,13 @@ function setupEventListeners() {
     });
   }
 
+  // Tombol mengambang untuk menghubungi CS via WhatsApp
+  const waFloatBtn = document.getElementById('btn-wa-float');
+  if (waFloatBtn) {
+    const waMessage = 'Halo Rama Swalayan, saya ingin bertanya seputar produk/pesanan.';
+    waFloatBtn.href = Store.getWhatsAppSendUrl(Store.ADMIN_WA, waMessage);
+  }
+
   // Infinite Scroll & Scroll Direction Aware Auto-Hiding Header Container
   const productsContainer = document.querySelector('.products-container');
   let lastScrollTop = 0;
@@ -286,7 +296,6 @@ function setupEventListeners() {
 
 function renderCategories() {
   renderCategoryDrawerList();
-  updateCategoryTriggerLabel();
 }
 
 /**
@@ -343,13 +352,9 @@ function renderCategoryDrawerList() {
       const catValue = btn.getAttribute('data-cat');
       activeCategoryId = catValue || null;
 
-      updateActiveCategoryDrawerUI();
-      updateCategoryTriggerLabel();
-      renderProducts();
-      closeCategoryDrawer();
-
-      const container = document.querySelector('.products-container');
-      if (container) container.scrollTop = 0;
+      window.location.href = activeCategoryId
+        ? `.?category=${encodeURIComponent(activeCategoryId)}`
+        : `.`;
     });
   });
 }
@@ -362,27 +367,6 @@ function updateActiveCategoryDrawerUI() {
     const catValue = btn.getAttribute('data-cat') || null;
     btn.classList.toggle('active', (!activeCategoryId && !catValue) || activeCategoryId === catValue);
   });
-}
-
-/**
- * Update label & ikon tombol pemicu drawer kategori di topbar sesuai kategori aktif.
- */
-function updateCategoryTriggerLabel() {
-  const labelEl = document.getElementById('category-trigger-label');
-  const iconEl = document.getElementById('category-trigger-icon');
-  if (!labelEl || !iconEl) return;
-
-  if (!activeCategoryId) {
-    labelEl.textContent = 'Semua Kategori';
-    iconEl.className = 'fa-solid fa-layer-group';
-  } else if (activeCategoryId === 'promo') {
-    labelEl.textContent = 'Promo';
-    iconEl.className = 'fa-solid fa-fire';
-  } else {
-    const cat = allCategories.find(c => c.id === activeCategoryId);
-    labelEl.textContent = cat ? cat.id : activeCategoryId;
-    iconEl.className = `fa-solid ${(cat && cat.icon) || 'fa-box'}`;
-  }
 }
 
 function openCategoryDrawer() {
@@ -400,12 +384,9 @@ function closeCategoryDrawer() {
  */
 window.selectCategoryDirectly = function(catId) {
   activeCategoryId = catId || null;
-  updateActiveCategoryDrawerUI();
-  updateCategoryTriggerLabel();
-  renderProducts();
-
-  const container = document.querySelector('.products-container');
-  if (container) container.scrollTop = 0;
+  window.location.href = activeCategoryId
+    ? `.?category=${encodeURIComponent(activeCategoryId)}`
+    : `.`;
 };
 
 /**

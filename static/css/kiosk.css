@@ -184,47 +184,25 @@ body.kiosk-body {
   white-space: nowrap;
 }
 
-/* Category Sidebar Drawer Trigger Button (topbar) */
-.category-trigger-btn {
+/* Category Sidebar Drawer Trigger Button (topbar) - minimalist, icon-only */
+.category-menu-btn {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  color: var(--gray-800);
+  font-size: 1rem;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  flex-shrink: 0;
-  max-width: 44%;
-  padding: 0.55rem 0.7rem 0.55rem 0.85rem;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--gray-300);
-  background: var(--gray-50);
-  color: var(--gray-900);
-  font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 700;
+  justify-content: center;
   cursor: pointer;
   transition: var(--transition);
 }
 
-.category-trigger-btn:active {
-  background: var(--white);
-  border-color: var(--primary);
-}
-
-.category-trigger-btn i:first-child {
-  color: var(--primary);
-  font-size: 0.85rem;
-  flex-shrink: 0;
-}
-
-.category-trigger-btn span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.category-trigger-caret {
-  font-size: 0.6rem;
-  color: var(--gray-400);
-  margin-left: auto;
-  flex-shrink: 0;
+.category-menu-btn:active {
+  background: var(--gray-200);
 }
 
 /* Collapsible Category Sidebar Drawer (mobile) */
@@ -904,6 +882,30 @@ body.kiosk-body {
   justify-content: space-between;
   gap: 0.5rem;
   z-index: 40;
+}
+
+/* Floating CS WhatsApp Button - static position, sits above the cart footer bar */
+.btn-wa-float {
+  position: absolute;
+  right: 14px;
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #25d366;
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.45);
+  z-index: 45;
+  text-decoration: none;
+  transition: var(--transition-bounce);
+}
+
+.btn-wa-float:active {
+  transform: scale(0.9);
 }
 
 .cart-summary-pill {
