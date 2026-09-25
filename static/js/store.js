@@ -231,7 +231,8 @@ const STORAGE_KEYS = {
   IMAGE_DB: 'rama_image_database_v1',
   ORDERS: 'rama_customer_orders_v1',
   AUTH: 'rama_admin_token_v1',
-  BANNERS: 'rama_promo_banners_v1'
+  BANNERS: 'rama_promo_banners_v1',
+  MY_ORDER_HISTORY: 'rama_my_order_history_v1'
 };
 
 // Struktur default banner promo homepage: 3 slot (1 landscape + 2 kotak berdampingan).
@@ -666,6 +667,44 @@ const Store = {
     }
 
     return await response.json();
+  },
+
+  /**
+   * =========================================================================
+   * RIWAYAT PESANAN PELANGGAN (perangkat/browser ini saja)
+   * =========================================================================
+   * Berbeda dari getOrders()/saveOrders() di atas (yang men-cache SELURUH
+   * pesanan untuk kebutuhan admin), daftar ini hanya berisi pesanan yang
+   * pernah dibuat lewat perangkat ini, disimpan sepenuhnya di localStorage,
+   * agar pelanggan tanpa akun/login tetap bisa melihat riwayat pesanannya
+   * sendiri di tab "Riwayat".
+   */
+
+  /**
+   * @returns {Array} Daftar pesanan milik pengguna, terbaru di paling atas.
+   */
+  getMyOrderHistory() {
+    const raw = localStorage.getItem(STORAGE_KEYS.MY_ORDER_HISTORY);
+    const history = raw ? JSON.parse(raw) : [];
+    return history.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  },
+
+  /**
+   * Dipanggil setiap kali "Kirim Pesanan" berhasil, agar pesanan tersebut
+   * langsung muncul di tab "Riwayat" milik pengguna.
+   * @param {Object} order - Order lengkap hasil dari createOrder() (harus punya .id).
+   */
+  addToMyOrderHistory(order) {
+    if (!order || !order.id) return;
+
+    const raw = localStorage.getItem(STORAGE_KEYS.MY_ORDER_HISTORY);
+    const history = raw ? JSON.parse(raw) : [];
+
+    // Hindari duplikat jika order dengan id yang sama tersimpan lagi
+    const filtered = history.filter(o => o.id !== order.id);
+    filtered.unshift(order);
+
+    localStorage.setItem(STORAGE_KEYS.MY_ORDER_HISTORY, JSON.stringify(filtered));
   },
 
   /**

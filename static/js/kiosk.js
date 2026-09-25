@@ -40,9 +40,6 @@ function getCategoryIcon(categoryId) {
 document.addEventListener('DOMContentLoaded', async () => {
   // Tampilkan skeleton loading langsung agar tidak terlihat kosong/blank
   // selagi Store.getCategories()/getProducts() masih memuat dari backend.
-  const urlParams = new URLSearchParams(window.location.search);
-  activeCategoryId = urlParams.get('category');
-
   renderProductsLoadingSkeleton();
   renderCategoryDrawerSkeleton();
 
@@ -214,22 +211,21 @@ function setupEventListeners() {
     });
   }
 
-  // Tombol summary keranjang membuka Drawer Keranjang
-  const cartTrigger = document.getElementById('cart-summary-trigger');
-  if (cartTrigger) {
-    cartTrigger.addEventListener('click', openCartModal);
+  // Navigasi bawah: Home / Keranjang / Riwayat
+  document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+    btn.addEventListener('click', () => switchView(btn.getAttribute('data-view')));
+  });
+
+  // Tombol checkout di halaman Keranjang membuka modal salin pesanan WhatsApp
+  const btnPageCheckout = document.getElementById('btn-page-checkout');
+  if (btnPageCheckout) {
+    btnPageCheckout.addEventListener('click', openCheckoutModal);
   }
 
-  // Tombol checkout membuka modal salin pesanan WhatsApp
-  const btnCheckout = document.getElementById('btn-checkout');
-  if (btnCheckout) {
-    btnCheckout.addEventListener('click', openCheckoutModal);
-  }
-
-  // Tombol kosongkan keranjang
-  const btnClearCart = document.getElementById('btn-clear-cart');
-  if (btnClearCart) {
-    btnClearCart.addEventListener('click', () => {
+  // Tombol kosongkan keranjang di halaman Keranjang
+  const btnClearCartPage = document.getElementById('btn-clear-cart-page');
+  if (btnClearCartPage) {
+    btnClearCartPage.addEventListener('click', () => {
       const cart = Store.getCart();
       if (cart.length === 0) return;
       if (confirm('Kosongkan semua pesanan di keranjang?')) {
@@ -262,6 +258,9 @@ function setupEventListeners() {
       el.addEventListener('input', updateOrderPreview);
     }
   });
+
+  // Tombol "Gunakan Lokasi Saat Ini" - isi Alamat Pengiriman dengan tautan Google Maps
+  setupLocationButton();
 
   // Kontrol kuantitas pada modal produk
   const btnModalMinus = document.getElementById('modal-qty-minus');
@@ -770,18 +769,21 @@ function renderCartUI() {
   const cart = Store.getCart();
   const { totalCount, totalPrice } = Store.getCartTotal(cart);
 
-  const badge = document.getElementById('cart-badge');
-  const footerTotal = document.getElementById('cart-footer-total');
-  const btnCheckout = document.getElementById('btn-checkout');
+  // Badge jumlah item di tab "Keranjang" pada bottom nav
+  const navBadge = document.getElementById('bottom-nav-cart-badge');
+  if (navBadge) {
+    navBadge.textContent = totalCount;
+    navBadge.style.display = totalCount > 0 ? 'flex' : 'none';
+  }
 
-  if (badge) badge.textContent = totalCount;
-  if (footerTotal) footerTotal.textContent = Store.formatCurrency(totalPrice);
-  if (btnCheckout) btnCheckout.disabled = totalCount === 0;
+  // Tombol checkout & total di halaman Keranjang
+  const btnPageCheckout = document.getElementById('btn-page-checkout');
+  if (btnPageCheckout) btnPageCheckout.disabled = totalCount === 0;
 
-  const cartItemList = document.getElementById('modal-cart-items');
-  const modalCartTotal = document.getElementById('modal-cart-total-price');
+  const pageCartTotal = document.getElementById('page-cart-total-price');
+  if (pageCartTotal) pageCartTotal.textContent = Store.formatCurrency(totalPrice);
 
-  if (modalCartTotal) modalCartTotal.textContent = Store.formatCurrency(totalPrice);
+  const cartItemList = document.getElementById('page-cart-items');
 
   if (cartItemList) {
     if (cart.length === 0) {
@@ -827,10 +829,83 @@ window.handleRemoveCart = function(index) {
   updateOrderPreview();
 };
 
-function openCartModal() {
-  renderCartUI();
-  const modal = document.getElementById('modal-cart-drawer');
-  if (modal) modal.classList.add('active');
+/**
+ * Berpindah tab bawah: 'home' | 'cart' | 'history'.
+ * Menyembunyikan/menampilkan view terkait dan me-render ulang kontennya jika perlu.
+ */
+function switchView(view) {
+  document.querySelectorAll('.kiosk-view').forEach(el => {
+    el.classList.toggle('active', el.id === `view-${view}`);
+  });
+
+  document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-view') === view);
+  });
+
+  // Sembunyikan tombol mengambang WA sementara di tab Keranjang, karena
+  // posisinya menutupi tombol Checkout pada halaman tersebut.
+  const waFloatBtn = document.getElementById('btn-wa-float');
+  if (waFloatBtn) {
+    waFloatBtn.classList.toggle('is-hidden', view === 'cart');
+  }
+
+  if (view === 'cart') {
+    renderCartUI();
+  } else if (view === 'history') {
+    renderHistoryPage();
+  }
+}
+
+/**
+ * Render tab "Riwayat": daftar pesanan yang pernah dibuat dari perangkat ini
+ * (Store.getMyOrderHistory(), disimpan di localStorage saat "Kirim Pesanan" berhasil).
+ */
+function renderHistoryPage() {
+  const container = document.getElementById('history-list-container');
+  if (!container) return;
+
+  const history = Store.getMyOrderHistory();
+
+  if (!history || history.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 3rem 1.25rem; color: var(--gray-500);">
+        <i class="fa-solid fa-receipt" style="font-size: 2.5rem; margin-bottom: 0.6rem; color: var(--gray-300); display: block;"></i>
+        <p style="font-size: 0.9rem; font-weight: 600;">Belum ada riwayat pesanan.</p>
+        <span style="font-size: 0.8rem;">Pesanan yang Anda kirim akan muncul di sini.</span>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = history.map(order => {
+    const dateLabel = new Date(order.createdAt).toLocaleString('id-ID', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
+
+    const statusMeta = Store.ORDER_STATUSES[String(order.status || '').toUpperCase()];
+    const statusLabel = statusMeta ? statusMeta.label : order.status;
+
+    return `
+      <div class="history-item-card">
+        <div class="history-item-top">
+          <div>
+            <div class="history-item-id">${order.id}</div>
+            <div class="history-item-date">${dateLabel}</div>
+          </div>
+          <span class="history-item-status status-${order.status}">${statusLabel}</span>
+        </div>
+        <div class="history-item-meta">
+          <span>${order.totalCount} barang</span>
+          <span class="history-item-total">${Store.formatCurrency(order.totalPrice)}</span>
+        </div>
+        <a href="${Store.getOrderTrackingUrl(order.id)}" target="_blank" class="history-item-track-btn">
+          <i class="fa-solid fa-location-dot"></i>
+          <span>Lacak Pesanan</span>
+        </a>
+      </div>
+    `;
+  }).join('');
 }
 
 function openCheckoutModal() {
@@ -860,6 +935,63 @@ function getCustomerFormData() {
     address: document.getElementById('cust-address')?.value || '',
     notes: document.getElementById('cust-notes')?.value || ''
   };
+}
+
+/**
+ * Tombol "Gunakan Lokasi Saat Ini" pada form Alamat Pengiriman.
+ * Menggunakan Geolocation API browser untuk mengisi field alamat dengan
+ * tautan Google Maps ke posisi pelanggan (butuh HTTPS/localhost & izin lokasi).
+ */
+function setupLocationButton() {
+  const btn = document.getElementById('btn-use-location');
+  if (!btn) return;
+
+  btn.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      showToast('Perangkat/browser Anda tidak mendukung deteksi lokasi', 'error');
+      return;
+    }
+
+    const icon = btn.querySelector('i');
+    const label = btn.querySelector('span');
+    const originalLabel = label ? label.textContent : '';
+
+    const setLoadingState = (isLoading) => {
+      btn.disabled = isLoading;
+      if (icon) icon.classList.toggle('fa-spin', isLoading);
+      if (label) label.textContent = isLoading ? 'Mendeteksi lokasi...' : originalLabel;
+    };
+
+    setLoadingState(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+
+        const addressInput = document.getElementById('cust-address');
+        if (addressInput) {
+          addressInput.value = mapsUrl;
+          updateOrderPreview();
+        }
+
+        showToast('Lokasi berhasil ditambahkan ke Alamat Pengiriman', 'success');
+        setLoadingState(false);
+      },
+      (err) => {
+        console.error('Gagal mendapatkan lokasi:', err);
+        let msg = 'Gagal mendapatkan lokasi Anda.';
+        if (err.code === err.PERMISSION_DENIED) {
+          msg = 'Izin lokasi ditolak. Mohon izinkan akses lokasi di pengaturan browser.';
+        } else if (err.code === err.TIMEOUT) {
+          msg = 'Waktu deteksi lokasi habis, silakan coba lagi.';
+        }
+        showToast(msg, 'error');
+        setLoadingState(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
 }
 
 function updateOrderPreview() {
@@ -894,6 +1026,9 @@ async function handleSendWhatsAppOrder(e) {
     showToast(err, 'error');
     return;
   }
+
+  // Simpan ke riwayat pesanan lokal perangkat ini agar muncul di tab "Riwayat"
+  Store.addToMyOrderHistory(order);
 
   const orderText = Store.formatOrderText(customerInfo, cart);
   const orderTextWithId = `*No. Pesanan:* ${order.id}\n\n` + orderText;

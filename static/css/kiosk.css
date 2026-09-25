@@ -434,7 +434,7 @@ body.kiosk-body {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 0.85rem 0.85rem 6.5rem 0.85rem;
+  padding: 0.85rem 0.85rem 4.5rem 0.85rem;
 }
 
 .products-grid {
@@ -867,28 +867,244 @@ body.kiosk-body {
 }
 
 /* Sticky Mobile Bottom Floating Order Bar */
-.kiosk-footer-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid var(--gray-200);
-  box-shadow: var(--shadow-float);
-  padding: 0.65rem 0.85rem calc(0.65rem + env(safe-area-inset-bottom, 0px)) 0.85rem;
+/* ==========================================================================
+   Tabbed Views (Home / Keranjang / Riwayat) + Bottom Navigation
+   ========================================================================== */
+.kiosk-view {
+  display: none;
+}
+
+.kiosk-view.active {
+  display: flex;
+}
+
+.view-title-bar {
+  padding: 0.85rem 0.95rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  z-index: 40;
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-100);
+  flex-shrink: 0;
 }
 
-/* Floating CS WhatsApp Button - static position, sits above the cart footer bar */
+.view-title-bar h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--gray-900);
+}
+
+.btn-clear-cart-text {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.2rem 0;
+}
+
+.page-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.85rem 0.85rem 4.5rem 0.85rem;
+  background: var(--gray-50);
+}
+
+/* Keranjang Page Footer (total + checkout) */
+.cart-page-footer {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-float);
+  padding: 0.75rem 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cart-page-total-row {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cart-page-total-row span:first-child {
+  font-size: 0.65rem;
+  color: var(--gray-500);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.cart-page-total-row span:last-child {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--gray-900);
+  white-space: nowrap;
+}
+
+/* Riwayat Pesanan (History) Cards */
+.history-item-card {
+  background: var(--white);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.history-item-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.history-item-id {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--gray-900);
+}
+
+.history-item-date {
+  font-size: 0.72rem;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+.history-item-status {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.history-item-status.status-received {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.history-item-status.status-preparing {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.history-item-status.status-delivering {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.history-item-status.status-completed {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.history-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--gray-600);
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--gray-200);
+}
+
+.history-item-total {
+  font-weight: 800;
+  color: var(--gray-900);
+}
+
+.history-item-track-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem;
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  color: var(--primary-hover);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.history-item-track-btn:active {
+  background: var(--gray-100);
+}
+
+/* Bottom Navigation Bar */
+.kiosk-bottom-nav {
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  background: var(--white);
+  border-top: 1px solid var(--gray-200);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.55rem 0.25rem 0.5rem 0.25rem;
+  background: none;
+  border: none;
+  color: var(--gray-500);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bottom-nav-item i {
+  font-size: 1.15rem;
+}
+
+.bottom-nav-item.active {
+  color: var(--primary);
+}
+
+.bottom-nav-icon-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.bottom-nav-badge {
+  position: absolute;
+  top: -6px;
+  right: -9px;
+  background: var(--promo-red);
+  color: var(--white);
+  font-size: 0.6rem;
+  font-weight: 800;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--white);
+}
+
+/* Floating CS WhatsApp Button - static position, sits above the bottom nav */
 .btn-wa-float {
   position: absolute;
   right: 14px;
-  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
   width: 50px;
   height: 50px;
   border-radius: 50%;
@@ -901,92 +1117,17 @@ body.kiosk-body {
   box-shadow: 0 4px 14px rgba(37, 211, 102, 0.45);
   z-index: 45;
   text-decoration: none;
-  transition: var(--transition-bounce);
+  transition: var(--transition-bounce), opacity 0.2s ease;
+}
+
+.btn-wa-float.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.6);
 }
 
 .btn-wa-float:active {
   transform: scale(0.9);
-}
-
-.cart-summary-pill {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  padding: 0.3rem 0.65rem 0.3rem 0.35rem;
-  border-radius: var(--radius-full);
-  background: var(--gray-100);
-  border: 1px solid var(--gray-300);
-  transition: var(--transition);
-  min-width: 0;
-  flex-shrink: 1;
-}
-
-.cart-summary-pill:active {
-  background: var(--gray-200);
-}
-
-.cart-icon-bubble {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  background: var(--primary);
-  color: var(--white);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.95rem;
-  flex-shrink: 0;
-  box-shadow: 0 3px 8px rgba(5, 150, 105, 0.3);
-}
-
-.cart-badge {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  background: var(--accent);
-  color: var(--dark);
-  font-size: 0.65rem;
-  font-weight: 800;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--white);
-}
-
-.cart-meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.cart-meta-label {
-  font-size: 0.6rem;
-  color: var(--gray-600);
-  font-weight: 700;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.cart-meta-total {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--gray-900);
-  line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.footer-actions {
-  display: flex;
-  gap: 0.45rem;
-  align-items: center;
-  flex-shrink: 0;
 }
 
 /* Checkout Button */
@@ -1306,6 +1447,42 @@ body.kiosk-body {
   font-weight: 700;
   color: var(--gray-800);
   margin-bottom: 0.25rem;
+}
+
+.form-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.btn-use-location {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary-hover);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-use-location i {
+  font-size: 0.75rem;
+}
+
+.btn-use-location:active {
+  opacity: 0.7;
+}
+
+.btn-use-location:disabled {
+  color: var(--gray-400);
+  cursor: not-allowed;
 }
 
 .form-control {
