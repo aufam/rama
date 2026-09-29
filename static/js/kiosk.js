@@ -40,6 +40,9 @@ function getCategoryIcon(categoryId) {
 document.addEventListener('DOMContentLoaded', async () => {
   // Tampilkan skeleton loading langsung agar tidak terlihat kosong/blank
   // selagi Store.getCategories()/getProducts() masih memuat dari backend.
+  const urlParams = new URLSearchParams(window.location.search);
+  activeCategoryId = urlParams.get('category');
+
   renderProductsLoadingSkeleton();
   renderCategoryDrawerSkeleton();
 
@@ -250,6 +253,14 @@ function setupEventListeners() {
   if (checkoutForm) {
     checkoutForm.addEventListener('submit', handleSendWhatsAppOrder);
   }
+
+  // iOS Safari soft keyboard viewport fix: reset window scroll position when inputs blur
+  document.addEventListener('focusout', (e) => {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+    }
+  });
 
   // Update pratinjau teks saat pengguna mengisi form data pemesan
   ['cust-name', 'cust-phone', 'cust-member', 'cust-address', 'cust-notes'].forEach(id => {
@@ -860,7 +871,7 @@ function switchView(view) {
  * Render tab "Riwayat": daftar pesanan yang pernah dibuat dari perangkat ini
  * (Store.getMyOrderHistory(), disimpan di localStorage saat "Kirim Pesanan" berhasil).
  */
-function renderHistoryPage() {
+async function renderHistoryPage() {
   const container = document.getElementById('history-list-container');
   if (!container) return;
 
@@ -877,35 +888,83 @@ function renderHistoryPage() {
     return;
   }
 
-  container.innerHTML = history.map(order => {
-    const dateLabel = new Date(order.createdAt).toLocaleString('id-ID', {
-      dateStyle: 'medium',
-      timeStyle: 'short'
-    });
+  container.innerHTML = (await Promise.all(
+    history.map(async historyOrder => {
+      const response = await fetch(`/api/order?id=${historyOrder.id}`);
 
-    const statusMeta = Store.ORDER_STATUSES[String(order.status || '').toUpperCase()];
-    const statusLabel = statusMeta ? statusMeta.label : order.status;
+      if (!response.ok) {
+        throw new Error(`cannot load order id=${historyOrder.id}`);
+      }
 
-    return `
+      const order = await response.json();
+
+      const dateLabel = new Date(order.createdAt).toLocaleString('id-ID', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      });
+
+      const statusMeta =
+        Store.ORDER_STATUSES[String(order.status || '').toUpperCase()];
+
+      const statusLabel = statusMeta ? statusMeta.label : order.status;
+
+      return `
       <div class="history-item-card">
         <div class="history-item-top">
           <div>
             <div class="history-item-id">${order.id}</div>
             <div class="history-item-date">${dateLabel}</div>
           </div>
-          <span class="history-item-status status-${order.status}">${statusLabel}</span>
+          <span class="history-item-status status-${order.status}">
+            ${statusLabel}
+          </span>
         </div>
+
         <div class="history-item-meta">
           <span>${order.totalCount} barang</span>
-          <span class="history-item-total">${Store.formatCurrency(order.totalPrice)}</span>
+          <span class="history-item-total">
+            ${Store.formatCurrency(order.totalPrice)}
+          </span>
         </div>
-        <a href="${Store.getOrderTrackingUrl(order.id)}" target="_blank" class="history-item-track-btn">
+
+        <a
+          href="${Store.getOrderTrackingUrl(order.id)}"
+          target="_blank"
+          class="history-item-track-btn"
+        >
           <i class="fa-solid fa-location-dot"></i>
           <span>Lacak Pesanan</span>
         </a>
       </div>
     `;
-  }).join('');
+    })
+  )).join('');
+}
+
+function populateCustomerFormFromStorage() {
+  const saved = Store.getCustomerInfo();
+  if (!saved) return;
+
+  if (saved.name) {
+    const el = document.getElementById('cust-name');
+    if (el) el.value = saved.name;
+  }
+  if (saved.phone) {
+    const el = document.getElementById('cust-phone');
+    if (el) el.value = saved.phone;
+  }
+  if (saved.member) {
+    const el = document.getElementById('cust-member');
+    if (el) el.value = saved.member;
+  }
+  if (saved.address) {
+    const el = document.getElementById('cust-address');
+    if (el) el.value = saved.address;
+  }
+  if (saved.notes) {
+    const el = document.getElementById('cust-notes');
+    if (el) el.value = saved.notes;
+  }
 }
 
 function openCheckoutModal() {
@@ -922,19 +981,22 @@ function openCheckoutModal() {
   const notTrackingContainer = document.getElementById('not-tracking-link-container');
   if (notTrackingContainer) notTrackingContainer.style.display = 'block';
 
+  populateCustomerFormFromStorage();
   updateOrderPreview();
   const modal = document.getElementById('modal-checkout');
   if (modal) modal.classList.add('active');
 }
 
 function getCustomerFormData() {
-  return {
+  const data = {
     name: document.getElementById('cust-name')?.value || '',
     phone: document.getElementById('cust-phone')?.value || '',
     member: document.getElementById('cust-member')?.value || '',
     address: document.getElementById('cust-address')?.value || '',
     notes: document.getElementById('cust-notes')?.value || ''
   };
+  Store.saveCustomerInfo(data);
+  return data;
 }
 
 /**
@@ -942,56 +1004,75 @@ function getCustomerFormData() {
  * Menggunakan Geolocation API browser untuk mengisi field alamat dengan
  * tautan Google Maps ke posisi pelanggan (butuh HTTPS/localhost & izin lokasi).
  */
+let leafletMap = null;
+let currentLat = -6.200000;
+let currentLng = 106.816666;
+
+function initLeafletMap() {
+  if (leafletMap) return;
+  leafletMap = L.map('map-container').setView([currentLat, currentLng], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(leafletMap);
+}
+
 function setupLocationButton() {
   const btn = document.getElementById('btn-use-location');
   if (!btn) return;
 
   btn.addEventListener('click', () => {
-    if (!navigator.geolocation) {
-      showToast('Perangkat/browser Anda tidak mendukung deteksi lokasi', 'error');
-      return;
+    const modal = document.getElementById('modal-map');
+    if (modal) modal.classList.add('active');
+
+    if (!leafletMap) {
+      initLeafletMap();
     }
 
-    const icon = btn.querySelector('i');
-    const label = btn.querySelector('span');
-    const originalLabel = label ? label.textContent : '';
+    setTimeout(() => {
+      if (leafletMap) {
+        leafletMap.invalidateSize();
+      }
+    }, 100); // Give time for modal to appear and size to stabilize
 
-    const setLoadingState = (isLoading) => {
-      btn.disabled = isLoading;
-      if (icon) icon.classList.toggle('fa-spin', isLoading);
-      if (label) label.textContent = isLoading ? 'Mendeteksi lokasi...' : originalLabel;
-    };
+    if (navigator.geolocation) {
+      const icon = btn.querySelector('i');
+      if (icon) icon.classList.add('fa-spin');
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (icon) icon.classList.remove('fa-spin');
+          const { latitude, longitude } = position.coords;
+          if (leafletMap) {
+            leafletMap.setView([latitude, longitude], 17);
+          }
+        },
+        (err) => {
+          if (icon) icon.classList.remove('fa-spin');
+          console.warn('Gagal mendapatkan lokasi awal:', err);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    } else {
+      showToast('Perangkat/browser Anda tidak mendukung deteksi lokasi', 'error');
+    }
+  });
 
-    setLoadingState(true);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+  const btnConfirm = document.getElementById('btn-confirm-location');
+  if (btnConfirm) {
+    btnConfirm.addEventListener('click', () => {
+      if (leafletMap) {
+        const center = leafletMap.getCenter();
+        const mapsUrl = `https://www.google.com/maps?q=${center.lat},${center.lng}`;
 
         const addressInput = document.getElementById('cust-address');
         if (addressInput) {
           addressInput.value = mapsUrl;
           updateOrderPreview();
         }
-
         showToast('Lokasi berhasil ditambahkan ke Alamat Pengiriman', 'success');
-        setLoadingState(false);
-      },
-      (err) => {
-        console.error('Gagal mendapatkan lokasi:', err);
-        let msg = 'Gagal mendapatkan lokasi Anda.';
-        if (err.code === err.PERMISSION_DENIED) {
-          msg = 'Izin lokasi ditolak. Mohon izinkan akses lokasi di pengaturan browser.';
-        } else if (err.code === err.TIMEOUT) {
-          msg = 'Waktu deteksi lokasi habis, silakan coba lagi.';
-        }
-        showToast(msg, 'error');
-        setLoadingState(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  });
+        closeAllModals();
+      }
+    });
+  }
 }
 
 function updateOrderPreview() {
@@ -1049,6 +1130,9 @@ async function handleSendWhatsAppOrder(e) {
   }
 
   showToast('Pesanan berhasil dibuat! Membuka WhatsApp admin...', 'success');
+
+  Store.clearCart();
+  renderCartUI();
 
   window.open(waUrl, '_blank');
 }

@@ -233,6 +233,14 @@ window.switchAdminTab = function(tabName) {
 };
 
 function setupAdminListeners() {
+  // iOS Safari soft keyboard viewport fix: reset window scroll position when inputs blur
+  document.addEventListener('focusout', (e) => {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+    }
+  });
+
   // Input pencarian produk
   const searchInput = document.getElementById('admin-search-input');
   if (searchInput) {
@@ -939,6 +947,7 @@ window.openOrderDetailModal = async function(orderId) {
           <div>• <strong>Nama:</strong> ${order.customer.name || '-'}</div>
           <div>• <strong>WhatsApp:</strong> ${order.customer.phone || '-'}</div>
           <div>• <strong>Alamat:</strong> ${order.customer.address || '-'}</div>
+          <div>• <strong>No. Member:</strong> ${order.customer.member || '-'}</div>
           ${order.customer.notes ? `<div>• <strong>Catatan:</strong> <em>${order.customer.notes}</em></div>` : ''}
         </div>
       </div>

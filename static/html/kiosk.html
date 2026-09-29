@@ -18,6 +18,9 @@
   <!-- Mobile & Kiosk Styling -->
   <link rel="stylesheet" href="css/kiosk.css">
 
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <link rel="icon" type="image/jpeg" href="/logo.jpg">
 </head>
 
@@ -257,7 +260,7 @@
                 <label class="form-label" for="cust-address" style="margin-bottom: 0;">Alamat Pengiriman *:</label>
                 <button type="button" class="btn-use-location" id="btn-use-location">
                   <i class="fa-solid fa-location-crosshairs"></i>
-                  <span>Gunakan Lokasi Saat Ini</span>
+                  <span>Pilih Lokasi</span>
                 </button>
               </div>
               <input type="text" id="cust-address" class="form-control" placeholder="Jl. Melati No. 12, Kel. Sekuro..."
@@ -308,6 +311,39 @@
             onclick="closeAllModals()">Tutup</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Map Pinpoint Location -->
+  <div class="modal-overlay" id="modal-map">
+    <div class="modal-card" style="height: 80vh; max-height: 80vh;">
+      <div class="modal-drag-indicator"></div>
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-map-location-dot" style="color: var(--primary);"></i>
+          <span>Pilih Lokasi</span>
+        </div>
+        <button type="button" class="btn-close-modal" onclick="closeAllModals()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 0; display: flex; flex-direction: column; position: relative;">
+        <div id="map-container" style="flex: 1; min-height: 300px; width: 100%; z-index: 1;"></div>
+        <!-- Center marker crosshair -->
+        <div
+          style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); z-index: 10; pointer-events: none;">
+          <i class="fa-solid fa-location-dot"
+            style="color: var(--primary); font-size: 2.5rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));"></i>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-clear-cart"
+          style="width: auto; height: auto; padding: 0.6rem 1rem; border-radius: var(--radius-full);"
+          onclick="closeAllModals()">Batal</button>
+        <button type="button" class="btn-checkout" id="btn-confirm-location">
+          <i class="fa-solid fa-check"></i> Gunakan Lokasi Ini
+        </button>
+      </div>
     </div>
   </div>
 

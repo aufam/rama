@@ -232,7 +232,8 @@ const STORAGE_KEYS = {
   ORDERS: 'rama_customer_orders_v1',
   AUTH: 'rama_admin_token_v1',
   BANNERS: 'rama_promo_banners_v1',
-  MY_ORDER_HISTORY: 'rama_my_order_history_v1'
+  MY_ORDER_HISTORY: 'rama_my_order_history_v1',
+  CUSTOMER_INFO: 'rama_customer_info_v1'
 };
 
 // Struktur default banner promo homepage: 3 slot (1 landscape + 2 kotak berdampingan).
@@ -260,6 +261,24 @@ const Store = {
 
   ORDER_STATUSES,
   ADMIN_WA,
+
+  getCustomerInfo() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CUSTOMER_INFO);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  saveCustomerInfo(info) {
+    if (!info) return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.CUSTOMER_INFO, JSON.stringify(info));
+    } catch (e) {
+      console.warn('Gagal menyimpan data pelanggan ke localStorage:', e);
+    }
+  },
 
   // Helper format mata uang Rupiah
   formatCurrency(amount) {
@@ -746,9 +765,26 @@ const Store = {
    * TODO: Ganti dengan Backend API: DELETE /api/orders/:id
    */
   async deleteOrder(orderId) {
-    let orders = await this.getOrders(true);
-    orders = orders.filter(o => o.id.toUpperCase() !== orderId.toUpperCase());
-    await this.saveOrders(orders);
+    const response = await fetch('api/auth/orders', {
+      headers: { Authorization: `Bearer ${this.AUTHORIZATION || ''}`, 'Content-Type': 'application/json' },
+      method: 'DELETE',
+      body: JSON.stringify({ id: orderId }),
+    });
+
+    if (response.status === 401 && this.onUnauthorized) {
+      await this.onUnauthorized();
+      return this.deleteOrder(orderId);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    await this.getOrders();
+
+    // let orders = await this.getOrders(true);
+    // orders = orders.filter(o => o.id.toUpperCase() !== orderId.toUpperCase());
+    // await this.saveOrders(orders);
     return true;
   },
 
