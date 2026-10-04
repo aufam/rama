@@ -1069,7 +1069,8 @@ function setupLocationButton() {
           updateOrderPreview();
         }
         showToast('Lokasi berhasil ditambahkan ke Alamat Pengiriman', 'success');
-        closeAllModals();
+        const modal = document.getElementById('modal-map');
+        if (modal) modal.classList.remove('active');
       }
     });
   }
