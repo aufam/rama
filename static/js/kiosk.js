@@ -263,7 +263,7 @@ function setupEventListeners() {
   });
 
   // Update pratinjau teks saat pengguna mengisi form data pemesan
-  ['cust-name', 'cust-phone', 'cust-member', 'cust-address', 'cust-notes'].forEach(id => {
+  ['cust-name', 'cust-phone', 'cust-member', 'cust-address-detail', 'cust-address', 'cust-notes'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener('input', updateOrderPreview);
@@ -941,6 +941,42 @@ async function renderHistoryPage() {
   )).join('');
 }
 
+function hasMapPin(address) {
+  if (!address || typeof address !== 'string') return false;
+  return /https?:\/\/(www\.)?(google\.com\/maps|maps\.google\.com|maps\.app\.goo\.gl)/i.test(address) ||
+    /https?:\/\/.*[?&]q=[-0-9.]+,[-0-9.]+/i.test(address);
+}
+
+function updateMapPinStatusUI() {
+  const pinInput = document.getElementById('cust-pin-point');
+  const badge = document.getElementById('map-pin-status-badge');
+  const btnLoc = document.getElementById('btn-use-location');
+  const btnLocText = document.getElementById('btn-location-text');
+
+  const pinUrl = pinInput ? pinInput.value.trim() : '';
+  const isPinned = hasMapPin(pinUrl);
+
+  if (isPinned) {
+    if (badge) {
+      badge.classList.remove('not-pinned');
+      badge.classList.add('is-pinned');
+      const coordMatch = pinUrl.match(/q=([-0-9.]+),([-0-9.]+)/);
+      const coordText = coordMatch ? ` (${coordMatch[1]}, ${coordMatch[2]})` : '';
+      badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span id="map-pin-status-text">Titik peta terpasang${coordText} &bull; <u>Ubah</u></span>`;
+    }
+    if (btnLoc) btnLoc.classList.add('is-pinned');
+    if (btnLocText) btnLocText.textContent = 'Ubah Titik Peta';
+  } else {
+    if (badge) {
+      badge.classList.remove('is-pinned');
+      badge.classList.add('not-pinned');
+      badge.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> <span id="map-pin-status-text">Titik peta belum ditentukan (Wajib klik 'Pin Point Peta')</span>`;
+    }
+    if (btnLoc) btnLoc.classList.remove('is-pinned');
+    if (btnLocText) btnLocText.textContent = 'Pin Point Peta (Wajib)';
+  }
+}
+
 function populateCustomerFormFromStorage() {
   const saved = Store.getCustomerInfo();
   if (!saved) return;
@@ -958,13 +994,28 @@ function populateCustomerFormFromStorage() {
     if (el) el.value = saved.member;
   }
   if (saved.address) {
-    const el = document.getElementById('cust-address');
-    if (el) el.value = saved.address;
+    const pinInput = document.getElementById('cust-pin-point');
+    const detailInput = document.getElementById('cust-address-detail');
+    const custAddrEl = document.getElementById('cust-address');
+
+    if (custAddrEl) custAddrEl.value = saved.address;
+
+    const mapMatch = saved.address.match(/https?:\/\/(www\.)?(google\.com\/maps|maps\.google\.com|maps\.app\.goo\.gl)[^\s\n]*/i);
+    if (mapMatch) {
+      const pinUrl = mapMatch[0];
+      if (pinInput) pinInput.value = pinUrl;
+      const detailPart = saved.address.replace(pinUrl, '').replace(/^[\s\n,–-]+/, '').trim();
+      if (detailInput) detailInput.value = detailPart;
+    } else {
+      if (pinInput) pinInput.value = '';
+      if (detailInput) detailInput.value = saved.address;
+    }
   }
   if (saved.notes) {
     const el = document.getElementById('cust-notes');
     if (el) el.value = saved.notes;
   }
+  updateMapPinStatusUI();
 }
 
 function openCheckoutModal() {
@@ -982,17 +1033,34 @@ function openCheckoutModal() {
   if (notTrackingContainer) notTrackingContainer.style.display = 'block';
 
   populateCustomerFormFromStorage();
+  updateMapPinStatusUI();
   updateOrderPreview();
   const modal = document.getElementById('modal-checkout');
   if (modal) modal.classList.add('active');
 }
 
 function getCustomerFormData() {
+  const pinPoint = document.getElementById('cust-pin-point')?.value.trim() || '';
+  const detail = document.getElementById('cust-address-detail')?.value.trim() || '';
+
+  // Join pin point and address detail using \n in the order data / API request
+  let combinedAddress = '';
+  if (pinPoint && detail) {
+    combinedAddress = `${pinPoint}\n${detail}`;
+  } else if (pinPoint) {
+    combinedAddress = pinPoint;
+  } else {
+    combinedAddress = detail;
+  }
+
+  const custAddrEl = document.getElementById('cust-address');
+  if (custAddrEl) custAddrEl.value = combinedAddress;
+
   const data = {
     name: document.getElementById('cust-name')?.value || '',
     phone: document.getElementById('cust-phone')?.value || '',
     member: document.getElementById('cust-member')?.value || '',
-    address: document.getElementById('cust-address')?.value || '',
+    address: combinedAddress,
     notes: document.getElementById('cust-notes')?.value || ''
   };
   Store.saveCustomerInfo(data);
@@ -1020,6 +1088,20 @@ function setupLocationButton() {
   const btn = document.getElementById('btn-use-location');
   if (!btn) return;
 
+  const detailInput = document.getElementById('cust-address-detail');
+  if (detailInput) {
+    detailInput.addEventListener('input', () => {
+      updateOrderPreview();
+    });
+  }
+
+  const badge = document.getElementById('map-pin-status-badge');
+  if (badge) {
+    badge.addEventListener('click', () => {
+      btn.click();
+    });
+  }
+
   btn.addEventListener('click', () => {
     const modal = document.getElementById('modal-map');
     if (modal) modal.classList.add('active');
@@ -1033,6 +1115,20 @@ function setupLocationButton() {
         leafletMap.invalidateSize();
       }
     }, 100); // Give time for modal to appear and size to stabilize
+
+    // If existing pin point exists, center map there
+    const pinInput = document.getElementById('cust-pin-point');
+    if (pinInput && pinInput.value) {
+      const match = pinInput.value.match(/q=([-0-9.]+),([-0-9.]+)/);
+      if (match) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (!isNaN(lat) && !isNaN(lng) && leafletMap) {
+          leafletMap.setView([lat, lng], 17);
+          return;
+        }
+      }
+    }
 
     if (navigator.geolocation) {
       const icon = btn.querySelector('i');
@@ -1052,7 +1148,7 @@ function setupLocationButton() {
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
       );
     } else {
-      showToast('Perangkat/browser Anda tidak mendukung deteksi lokasi', 'error');
+      showToast('Perangkat/browser Anda tidak mendukung deteksi lokasi otomatis', 'info');
     }
   });
 
@@ -1061,14 +1157,22 @@ function setupLocationButton() {
     btnConfirm.addEventListener('click', () => {
       if (leafletMap) {
         const center = leafletMap.getCenter();
-        const mapsUrl = `https://www.google.com/maps?q=${center.lat},${center.lng}`;
+        const mapsUrl = `https://www.google.com/maps?q=${center.lat.toFixed(6)},${center.lng.toFixed(6)}`;
 
-        const addressInput = document.getElementById('cust-address');
-        if (addressInput) {
-          addressInput.value = mapsUrl;
-          updateOrderPreview();
+        const pinInput = document.getElementById('cust-pin-point');
+        if (pinInput) {
+          pinInput.value = mapsUrl;
         }
-        showToast('Lokasi berhasil ditambahkan ke Alamat Pengiriman', 'success');
+
+        updateMapPinStatusUI();
+        updateOrderPreview();
+
+        const detailInput = document.getElementById('cust-address-detail');
+        if (detailInput) {
+          detailInput.focus();
+        }
+
+        showToast('Titik peta terpasang! Silakan lengkapi detail alamat di bawahnya.', 'success');
         const modal = document.getElementById('modal-map');
         if (modal) modal.classList.remove('active');
       }
@@ -1090,9 +1194,17 @@ async function handleSendWhatsAppOrder(e) {
 
   const customerInfo = getCustomerFormData();
   const cart = Store.getCart();
+  const pinPoint = document.getElementById('cust-pin-point')?.value.trim() || '';
 
-  if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) {
-    showToast('Harap lengkapi Nama, No. WhatsApp, dan Alamat Pengiriman!', 'error');
+  if (!customerInfo.name || !customerInfo.phone) {
+    showToast('Harap lengkapi Nama dan No. WhatsApp!', 'error');
+    return;
+  }
+
+  if (!pinPoint || !hasMapPin(pinPoint)) {
+    showToast('Titik pin point peta wajib ditentukan! Silakan pilih lokasi di peta.', 'error');
+    const btn = document.getElementById('btn-use-location');
+    if (btn) btn.click();
     return;
   }
 

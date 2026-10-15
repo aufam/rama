@@ -1451,10 +1451,10 @@ body.kiosk-body {
 
 .form-label {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--gray-800);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .form-label-row {
@@ -1462,47 +1462,109 @@ body.kiosk-body {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
 }
 
 .btn-use-location {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--primary-hover);
-  font-size: 0.72rem;
+  gap: 0.4rem;
+  background: var(--primary-light);
+  border: 1px solid rgba(5, 150, 105, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.8rem;
+  color: var(--primary);
+  font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+  transition: var(--transition);
 }
 
 .btn-use-location i {
-  font-size: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.btn-use-location:hover {
+  background: rgba(5, 150, 105, 0.15);
 }
 
 .btn-use-location:active {
-  opacity: 0.7;
+  transform: scale(0.97);
+  opacity: 0.85;
 }
 
 .btn-use-location:disabled {
   color: var(--gray-400);
   cursor: not-allowed;
+  background: var(--gray-100);
+  border-color: var(--gray-200);
+}
+
+.btn-use-location.is-pinned {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.map-pin-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.map-pin-status-badge i {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.map-pin-status-badge.not-pinned {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.map-pin-status-badge.not-pinned:hover {
+  background: #fee2e2;
+}
+
+.map-pin-status-badge.is-pinned {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+}
+
+.map-pin-status-badge.is-pinned:hover {
+  background: #d1fae5;
+}
+
+.form-hint {
+  font-size: 0.8rem;
+  color: var(--gray-600);
+  margin-top: 0.35rem;
+  display: block;
+  line-height: 1.4;
 }
 
 .form-control {
   width: 100%;
-  padding: 0.6rem 0.8rem;
+  padding: 0.7rem 0.9rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--gray-300);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--gray-900);
   font-family: inherit;
   outline: none;
   transition: var(--transition);
+  line-height: 1.45;
 }
 
 .form-control:focus {
@@ -1515,14 +1577,14 @@ body.kiosk-body {
   background: var(--gray-50);
   border: 1px dashed var(--gray-300);
   border-radius: var(--radius-sm);
-  padding: 0.75rem;
+  padding: 0.85rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   white-space: pre-wrap;
   color: var(--gray-900);
-  max-height: 160px;
+  max-height: 180px;
   overflow-y: auto;
-  line-height: 1.4;
+  line-height: 1.5;
   margin-bottom: 0.85rem;
   user-select: text;
   word-break: break-all;
@@ -1530,12 +1592,12 @@ body.kiosk-body {
 
 .copy-btn-large {
   width: 100%;
-  padding: 0.85rem;
+  padding: 0.95rem;
   background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
   color: var(--white);
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 800;
   display: flex;
   align-items: center;

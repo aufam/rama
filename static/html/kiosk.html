@@ -255,16 +255,31 @@
               <input type="tel" id="cust-member" class="form-control" placeholder="xxxxxxxxxxxx">
             </div>
 
+            <!-- 1. Form Pin Point Peta (Wajib) -->
             <div class="form-group">
               <div class="form-label-row">
-                <label class="form-label" for="cust-address" style="margin-bottom: 0;">Alamat Pengiriman *:</label>
+                <label class="form-label" style="margin-bottom: 0;">Titik Lokasi Peta *:</label>
                 <button type="button" class="btn-use-location" id="btn-use-location">
-                  <i class="fa-solid fa-location-crosshairs"></i>
-                  <span>Pilih Lokasi</span>
+                  <i class="fa-solid fa-map-location-dot"></i>
+                  <span id="btn-location-text">Pin Point Peta (Wajib)</span>
                 </button>
               </div>
-              <input type="text" id="cust-address" class="form-control" placeholder="Jl. Melati No. 12, Kel. Sekuro..."
-                required>
+              <div class="map-pin-status-badge not-pinned" id="map-pin-status-badge" title="Klik untuk menentukan titik lokasi di peta">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="map-pin-status-text">Titik peta belum ditentukan (Wajib klik 'Pin Point Peta')</span>
+              </div>
+              <input type="hidden" id="cust-pin-point" value="">
+            </div>
+
+            <!-- 2. Form Detail Alamat Pengiriman -->
+            <div class="form-group">
+              <label class="form-label" for="cust-address-detail">Detail Alamat (No. Rumah / RT-RW / Patokan):</label>
+              <textarea id="cust-address-detail" class="form-control" rows="2"
+                placeholder="Contoh: Jl. Melati No. 12, RT 02/03, pagar hitam depan pos ronda..."></textarea>
+              <span class="form-hint" id="address-hint">
+                * Tuliskan nomor rumah, RT/RW, gang, atau patokan agar kurir mudah menemukan rumah Anda.
+              </span>
+              <input type="hidden" id="cust-address" value="">
             </div>
 
             <div class="form-group">
