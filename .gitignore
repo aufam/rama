@@ -13,3 +13,6 @@ __pycache__
 compile_commands.json
 /static/assets/
 /static/sekuro/
+
+/frontend/node_modules
+/frontend/dist

@@ -1,0 +1,105 @@
+import { For, Show } from 'solid-js'
+import { useStore } from '../../store-context'
+import { STATUS_META, dateTimeFull, rupiah } from '../../types'
+import type { Order } from '../../types'
+
+/** Full detail view for an order, opened from the admin orders tab. */
+export default function OrderDetailSheet() {
+  const store = useStore()
+  const o = () => store.state.admin.details
+  const open = () => o() !== null
+
+  return (
+    <div class={`sheet ${open() ? 'on' : ''}`} aria-hidden={!open()}>
+      <div class="sheet-card">
+        <Show when={o()}>
+          {(order) => (
+            <>
+              <div class="sheet-grip" />
+              <div class="sheet-top">
+                <div>
+                  <h3>Detail {order().id}</h3>
+                  <p>{dateTimeFull(order().createdAt)}</p>
+                </div>
+                <button class="sheet-x" onClick={() => { store.state.admin.details = null }} aria-label="Tutup">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+
+              <div class="sheet-body">
+                <div class="okd-head">
+                  <div>
+                    <span class="lbl" style="font-size:.64rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint);">Status Saat Ini</span>
+                    <div class="oid" style="font-family:var(--font-display); font-size:1.2rem; font-weight:700;">
+                      {statusOf(order().status).label}
+                    </div>
+                  </div>
+                  <span class={`pill tone-${statusOf(order().status).tone}`}>
+                    <i class={`fa-solid ${statusOf(order().status).icon}`}></i>
+                  </span>
+                </div>
+
+                <div class="okd-status">
+                  <div>
+                    <b>{order().customer.name}</b><br />
+                    {order().customer.phone}
+                    <Show when={order().customer.member}> · Member {order().customer.member}</Show>
+                  </div>
+                </div>
+
+                <div class="info-box">{order().customer.address || '—'}</div>
+                <Show when={order().customer.notes}>
+                  <div class="notice warn" style="background:var(--cream); border-color:var(--line); color:var(--ink-soft);">
+                    <i class="fa-solid fa-comment-dots"></i>
+                    <span>{order().customer.notes}</span>
+                  </div>
+                </Show>
+
+                <div class="goods">
+                  <For each={order().items}>
+                    {(item) => (
+                      <div class="okd-item">
+                        <span>
+                          <b>{item.name}</b>
+                          <span style="display:block; font-size:.7rem; color:var(--ink-soft);">
+                            {item.quantity} {item.unit} x {rupiah(item.price)}
+                          </span>
+                          <Show when={item.notes}>
+                            <span style="display:block; font-size:.68rem; color:var(--red);">↳ {item.notes}</span>
+                          </Show>
+                        </span>
+                        <span style="font-weight:700; white-space:nowrap;">{rupiah(item.price * item.quantity)}</span>
+                      </div>
+                    )}
+                  </For>
+                  <div class="goods-total">
+                    <b>Total ({order().totalCount} barang)</b>
+                    <span class="val">{rupiah(order().totalPrice)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sheet-foot">
+                <a
+                  class="btn btn-ghost btn-flex"
+                  href={`https://wa.me/${order().customer.phone.replace(/\D/g, '').replace(/^0/, '62')}?text=${encodeURIComponent(`Halo ${order().customer.name}, pesanan Anda ${order().id} sedang kami proses.`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <i class="fa-brands fa-whatsapp"></i> Hubungi
+                </a>
+                <button class="btn btn-primary btn-flex" onClick={() => { store.state.admin.details = null }}>
+                  Tutup
+                </button>
+              </div>
+            </>
+          )}
+        </Show>
+      </div>
+    </div>
+  )
+}
+
+function statusOf(status: string) {
+  return STATUS_META[status] ?? STATUS_META.received
+}
