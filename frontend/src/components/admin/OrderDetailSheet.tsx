@@ -48,7 +48,20 @@ export default function OrderDetailSheet() {
                   </div>
                 </div>
 
-                <div class="info-box">{order().customer.address || '—'}</div>
+                <div class="info-box">
+                  {(() => {
+                    const address = order().customer.address
+                    if (!address) return '—'
+
+                    const parts = address.split(/(https?:\/\/[^\s]+)/g)
+
+                    return parts.map((part) =>
+                      /^https?:\/\//i.test(part)
+                        ? (<a href={part} target="_blank" rel="noopener noreferrer" > {part} </a>)
+                        : (part)
+                    )
+                  })()}
+                </div>
                 <Show when={order().customer.notes}>
                   <div class="notice warn" style="background:var(--cream); border-color:var(--line); color:var(--ink-soft);">
                     <i class="fa-solid fa-comment-dots"></i>
