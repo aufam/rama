@@ -143,6 +143,20 @@ export function pinUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`
 }
 
+/* ---------- device GPS ---------- */
+
+/** Best-effort device GPS read (requires user permission) — resolves with a map pin coordinate. */
+export function readGps(): Promise<{ lat: number; lng: number }> {
+  return new Promise((resolve, reject) => {
+    if (!('geolocation' in navigator)) { reject(new Error('Geolocation tidak tersedia.')); return }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (err) => reject(new Error(err.message || 'Lokasi GPS tidak dapat dideteksi.')),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    )
+  })
+}
+
 export function readPin(address: string): { lat: number; lng: number } | null {
   if (!address) return null
   const m = address.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/)

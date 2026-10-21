@@ -365,6 +365,15 @@ a {
 .content {
   flex: 1;
   padding: 16px 20px 120px;
+}
+
+/* keep-alive views: inactive pages only lose layout, active page keeps
+   the exact flex-column rhythm .content used to provide directly */
+.view {
+  display: none;
+}
+
+.view.on {
   display: flex;
   flex-direction: column;
   gap: 22px;
@@ -1947,6 +1956,11 @@ a {
 
 .info-box b {
   font-weight: 700;
+}
+
+.info-box a {
+  color: inherit;
+  text-decoration: underline;
 }
 
 .sect-title {

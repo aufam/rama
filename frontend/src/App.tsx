@@ -23,9 +23,11 @@ export default function App() {
       <div class="screen">
         <TopBar />
         <main class="content">
-          {store.state.view === 'home' && <HomePage />}
-          {store.state.view === 'cart' && <CartPage />}
-          {store.state.view === 'history' && <HistoryPage />}
+          {/* keep-alive: pages stay mounted so returning home reuses the built DOM,
+              images and scroll state instead of rebuilding the whole catalog */}
+          <div class="view" classList={{ on: store.state.view === 'home' }}><HomePage /></div>
+          <div class="view" classList={{ on: store.state.view === 'cart' }}><CartPage /></div>
+          <div class="view" classList={{ on: store.state.view === 'history' }}><HistoryPage /></div>
         </main>
         <Drawer />
         <Dock />
