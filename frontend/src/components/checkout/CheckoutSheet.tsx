@@ -1,6 +1,6 @@
-import { Show, createSignal } from 'solid-js'
+import { Show, createEffect, createSignal } from 'solid-js'
 import { useStore } from '../../store-context'
-import { orderMessage, pinUrl, readPin, waLink } from '../../types'
+import { orderMessage, pinUrl, readGps, readPin, waLink } from '../../types'
 import type { CustomerInfo, Order } from '../../types'
 import MapSheet from './MapSheet'
 
@@ -26,6 +26,20 @@ export default function CheckoutSheet() {
   const [pin, setPin] = createSignal<{ lat: number; lng: number } | null>(savedPin)
   const [mapOpen, setMapOpen] = createSignal(false)
   const [sending, setSending] = createSignal(false)
+  const [gpsBusy, setGpsBusy] = createSignal(false)
+
+  /* without a saved pin, default the map point to the device's current GPS position
+     the first time the checkout sheet opens (browser shows permission prompt) */
+  let gpsTried = false
+  createEffect(() => {
+    if (!store.state.checkout || gpsTried || pin()) return
+    gpsTried = true
+    setGpsBusy(true)
+    readGps()
+      .then((c) => setPin(c))
+      .catch(() => store.toast('Lokasi GPS tidak dapat dideteksi — pilih titik di peta.', 'err'))
+      .finally(() => setGpsBusy(false))
+  })
 
   const info = (): CustomerInfo => ({
     /* backend requires this field — an empty member no. stays an empty string */
@@ -109,10 +123,14 @@ export default function CheckoutSheet() {
               <div class="field">
                 <label>Titik lokasi peta <em>*</em></label>
                 <button type="button" class={`pinbox ${pin() ? 'ok' : 'warn'}`} onClick={() => setMapOpen(true)}>
-                  <i class={`fa-solid ${pin() ? 'fa-circle-check' : 'fa-map-location-dot'}`}></i>
+                  <i class={`fa-solid ${gpsBusy() ? 'fa-circle-notch fa-spin' : pin() ? 'fa-circle-check' : 'fa-map-location-dot'}`}></i>
                   <span>
-                    {pin() ? `Titik peta terpasang (${pin()!.lat.toFixed(5)}, ${pin()!.lng.toFixed(5)})` : 'Belum ditentukan — ketuk untuk pilih lokasi'}
-                    <small>{pin() ? 'Ketuk untuk mengubah' : 'Agar kurir mudah menemukan rumah Anda'}</small>
+                    {gpsBusy()
+                      ? 'Mendeteksi lokasi GPS Anda...'
+                      : pin()
+                        ? `Titik peta terpasang (${pin()!.lat.toFixed(5)}, ${pin()!.lng.toFixed(5)})`
+                        : 'Belum ditentukan — ketuk untuk pilih lokasi'}
+                    <small>{gpsBusy() ? 'Menggunakan posisi perangkat Anda' : pin() ? 'Ketuk untuk mengubah' : 'Agar kurir mudah menemukan rumah Anda'}</small>
                   </span>
                 </button>
               </div>
