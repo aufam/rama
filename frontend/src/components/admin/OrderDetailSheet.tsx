@@ -1,4 +1,5 @@
-import { For, Show } from 'solid-js'
+import { For, Show, createEffect, createSignal } from 'solid-js'
+import JsBarcode from 'jsbarcode'
 import { useStore } from '../../store-context'
 import { STATUS_META, dateTimeFull, orderCount, orderTotal, rupiah } from '../../types'
 import type { Order } from '../../types'
@@ -57,20 +58,7 @@ export default function OrderDetailSheet() {
 
                 <div class="goods">
                   <For each={order().items}>
-                    {(item) => (
-                      <div class="okd-item">
-                        <span>
-                          <b>{item.name}</b>
-                          <span style="display:block; font-size:.7rem; color:var(--ink-soft);">
-                            {item.quantity} {item.unit} x {rupiah(item.price)}
-                          </span>
-                          <Show when={item.notes}>
-                            <span style="display:block; font-size:.68rem; color:var(--red);">↳ {item.notes}</span>
-                          </Show>
-                        </span>
-                        <span style="font-weight:700; white-space:nowrap;">{rupiah(item.price * item.quantity)}</span>
-                      </div>
-                    )}
+                    {(item) => <OrderItemRow item={item} />}
                   </For>
                   <div class="goods-total">
                     <b>Total ({orderCount(order())} barang)</b>
@@ -102,4 +90,97 @@ export default function OrderDetailSheet() {
 
 function statusOf(status: string) {
   return STATUS_META[status] ?? STATUS_META.received
+}
+
+/** One ordered line: name + qty + optional barcode peeker. */
+function OrderItemRow(props: { item: Order['items'][number] }) {
+  const store = useStore()
+  const barcode = () => store.productById(props.item.id)?.barcode || ''
+
+  return (
+    <div class="okd-item">
+      <span>
+        <span class="okd-item-head">
+          <b>{props.item.name}</b>
+          <Show when={barcode()}>
+            <BarcodePeek code={barcode()} />
+          </Show>
+        </span>
+        <span style="display:block; font-size:.7rem; color:var(--ink-soft);">
+          barcode: {barcode()} * {props.item.quantity} {props.item.unit} x {rupiah(props.item.price)}
+        </span>
+        <Show when={props.item.notes}>
+          <span style="display:block; font-size:.68rem; color:var(--red);">↳ {props.item.notes}</span>
+        </Show>
+      </span>
+      <span style="font-weight:700; white-space:nowrap;">{rupiah(props.item.price * props.item.quantity)}</span>
+    </div>
+  )
+}
+
+/** Toggle button + lazily rendered EAN13 barcode (parity with vanilla admin.js). */
+function BarcodePeek(props: { code: string }) {
+  const [shown, setShown] = createSignal(false)
+  let svg: SVGSVGElement | undefined
+
+  createEffect(() => {
+    if (!shown() || !svg) return
+    try {
+      const code = props.code.trim()
+      const format = getRetailBarcodeFormat(code)
+
+      JsBarcode(svg, code, {
+        format,
+        flat: true,
+        width: 1.5,
+        height: 45,
+        fontSize: 12,
+        margin: 5,
+      })
+    } catch (e) {
+      console.warn('Gagal menggambar barcode:', e)
+    }
+  })
+
+  return (
+    <>
+      <button
+        type="button"
+        class="okd-peek-btn"
+        onClick={() => setShown((v) => !v)}
+        title={shown() ? 'Sembunyikan barcode' : 'Tampilkan barcode'}
+      >
+        <i class={`fa-solid ${shown() ? 'fa-eye-slash' : 'fa-barcode'}`}></i> {shown() ? 'Hide barcode' : 'Show barcode'}
+      </button>
+      <Show when={shown()}>
+        <div class="okd-barcode">
+          <svg ref={svg} />
+        </div>
+      </Show>
+    </>
+  )
+}
+
+function getRetailBarcodeFormat(code: string): string {
+  const value = code.trim()
+
+  if (!/^\d+$/.test(value)) {
+    return 'CODE128'
+  }
+
+  switch (value.length) {
+    case 8:
+      return 'EAN8'
+    case 12:
+      return 'UPC'
+    case 13:
+      return 'EAN13'
+    case 6:
+      return 'UPCE'
+    case 7:
+      // UPC-E may be supplied without its check digit.
+      return 'UPCE'
+    default:
+      return 'CODE128'
+  }
 }

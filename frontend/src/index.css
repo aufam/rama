@@ -2927,6 +2927,42 @@ a {
   border: none;
 }
 
+/* barcode peeker inside the order detail sheet */
+.okd-item-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.okd-peek-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 7px;
+  cursor: pointer;
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.okd-barcode {
+  display: block;
+  text-align: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  width: 100%;
+}
+
+.okd-barcode svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Map */
 .map-card {
   height: 62dvh;

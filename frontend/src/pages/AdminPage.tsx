@@ -313,6 +313,21 @@ const ORDERS_PER_PAGE = 15 // parity with vanilla admin.js
 function OrdersTab() {
   const store = useStore()
 
+  /* item details are stripped from GET api/auth/orders summaries —
+     the full order (with items) must be fetched via GET api/order?id= */
+  const [detailLoading, setDetailLoading] = createSignal('')
+
+  async function openDetail(o: Order) {
+    setDetailLoading(o.id)
+    try {
+      const full = await store.findOrder(o.id)
+      if (full) store.patchAdmin({ details: full })
+      else store.toast('Gagal memuat rincian pesanan.', 'err')
+    } finally {
+      setDetailLoading('')
+    }
+  }
+
   const filtered = createMemo<Order[]>(() => {
     let list = store.state.orders.slice().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     if (store.state.admin.status !== 'all') list = list.filter((o) => o.status === store.state.admin.status)
@@ -424,8 +439,8 @@ function OrdersTab() {
                       <For each={STATUS_ORDER}>{(s) => <option value={s}>{STATUS_META[s].label}</option>}</For>
                     </select>
                     <div class="acts">
-                      <button class="pbtn" onClick={() => store.patchAdmin({ details: o })}>
-                        <i class="fa-solid fa-eye"></i> Detail
+                      <button class="pbtn" onClick={() => void openDetail(o)}>
+                        <i class={`fa-solid ${detailLoading() === o.id ? 'fa-circle-notch fa-spin' : 'fa-eye'}`}></i> Detail
                       </button>
                       <a
                         class="pbtn"
