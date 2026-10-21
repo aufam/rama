@@ -1,9 +1,9 @@
-- implement lazy rendering when render products in home page and admin page, just like in previous vanillaJS implementation
-- banner carousel is not working
-- text in cari barang is not visible, probably because the foreground color is set white
-- Make the checkout popup scrollable
-- in admin page, `Pesanan` and `Banner` buttons are not working
-- in admin page, product filtering is not working
-- in history page, total `barang` and total price is empty
-- when in category page, e.g `/?category=promo`, and then go back to homepage again, it is still showing `promo` instead of `semua` unless refreshed
-- Make admin page separate page, e.g `admin.html`, and do not show admin navbar in homepage
+## the lazy rendering
+the lazy product rendering only works for just a few additional item. please make it simpler.
+you can refer to @/static/js/kiosk.js and @/static/js/admin.js for reference
+
+## Tracking page
+make tracking page as separate page named `tracking.html` as output html page
+
+## Offline fallback
+remove all offline mock fallback with just popup toast

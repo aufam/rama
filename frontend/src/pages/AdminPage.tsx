@@ -1,6 +1,7 @@
 import { For, Show, createMemo, createSignal } from 'solid-js'
+import { progressive } from '../components/ui/progressive'
 import { useStore } from '../store-context'
-import { STATUS_META, STATUS_ORDER, dateTimeICS, rupiah } from '../types'
+import { STATUS_META, STATUS_ORDER, dateTimeICS, orderCount, orderTotal, rupiah } from '../types'
 import type { Order, Product } from '../types'
 import ProductFormSheet from '../components/admin/ProductFormSheet'
 import CsvSheet from '../components/admin/CsvSheet'
@@ -72,9 +73,9 @@ function AdminLogin() {
           <i class={`fa-solid ${busy() ? 'fa-circle-notch fa-spin' : 'fa-right-to-bracket'}`}></i>
           {busy() ? 'Masuk...' : 'Masuk'}
         </button>
-        <button type="button" class="side" style="margin:0 auto; display:inline-flex; gap:6px; align-items:center; font-size:.76rem; font-weight:700; color:var(--ink-soft);" onClick={() => store.navigate('home')}>
+        <a class="side" style="margin: 0 auto; display: inline-flex; gap: 6px; align-items: center; font-size: .76rem; font-weight: 700; color: var(--ink-soft);" href="./index.html">
           <i class="fa-solid fa-arrow-left"></i> Kembali ke Toko
-        </button>
+        </a>
       </form>
     </div>
   )
@@ -88,13 +89,11 @@ function AdminShell() {
   const store = useStore()
   const [sideOpen, setSideOpen] = createSignal(false)
 
-  const go = (tab: string) => {
-    console.log('[dbg] go() called with', tab)
-    store.state.admin.tab = tab as 'products' | 'orders' | 'banners'
-    console.log('[dbg] tab now', store.state.admin.tab)
+  const go = (tab: 'products' | 'orders' | 'banners') => {
+    store.patchAdmin({ tab }) // prod-safe write (setState)
     setSideOpen(false)
   }
-  const orderCount = () => store.state.orders.filter((o) => o.status === 'received' || o.status === 'preparing').length
+  const pendingOrders = () => store.state.orders.filter((o) => o.status === 'received' || o.status === 'preparing').length
 
   return (
     <div class="admin">
@@ -116,9 +115,9 @@ function AdminShell() {
 
       <div class="admin-wrap">
         <Show when={sideOpen()}>
-          <div class="fade on" style="z-index:70;" onClick={() => setSideOpen(false)} />
+          <div class="fade on" style="z-index: 70;" onClick={() => setSideOpen(false)} />
         </Show>
-        <aside class={`admin-side ${sideOpen() ? 'mobile on' : ''}`}>
+        <aside class={`admin-side ${sideOpen() ? 'on' : ''}`}>
           <div class="aside-brand">
             <div class="mini"><i class="fa-solid fa-shield-halved"></i></div>
             <div>
@@ -130,13 +129,22 @@ function AdminShell() {
             {(t) => (
               <button class="aside-item" classList={{ on: store.state.admin.tab === t.id }} onClick={() => go(t.id)}>
                 <i class={`fa-solid ${t.icon}`}></i> {t.label}
-                <Show when={t.id === 'orders' && orderCount() > 0}>
-                  <span class="n">{orderCount()}</span>
+                <Show when={t.id === 'orders' && pendingOrders() > 0}>
+                  <span class="n">{pendingOrders()}</span>
                 </Show>
               </button>
             )}
           </For>
-          <button class="aside-item aside-out" onClick={() => { store.logout(); store.toast('Anda telah keluar.') }}>
+
+          <div class="lbl" style="font-size:.64rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-faint); padding:10px 10px 4px;">Data Tabel</div>
+          <button class="aside-item" onClick={() => store.openCsv('download')}>
+            <i class="fa-solid fa-download"></i> Unduh CSV
+          </button>
+          <button class="aside-item" onClick={() => store.openCsv('upload')}>
+            <i class="fa-solid fa-upload"></i> Unggah CSV
+          </button>
+
+          <button class="aside-item aside-out" onClick={store.logout}>
             <i class="fa-solid fa-right-from-bracket"></i> Keluar
           </button>
         </aside>
@@ -172,6 +180,8 @@ function AdminShell() {
 /* Products tab                                                     */
 /* --------------------------------------------------------------- */
 
+const ITEMS_PER_PAGE = 15 // parity with vanilla admin.js
+
 function ProductsTab() {
   const store = useStore()
 
@@ -190,6 +200,8 @@ function ProductsTab() {
     return list
   })
 
+  const pg = progressive(() => filtered().length, ITEMS_PER_PAGE, () => `${store.state.admin.search}|${store.state.admin.cat}`)
+
   async function remove(p: Product) {
     if (!window.confirm(`Hapus produk "${p.name}"? Tindakan ini permanen.`)) return
     try {
@@ -199,8 +211,10 @@ function ProductsTab() {
     }
   }
 
+  const TONE_BG: Record<string, string> = { green: '--green-soft', amber: '--amber-soft', red: '--red-soft', violet: '--violet-soft', blue: '--blue-soft' }
   const TONE_FG: Record<string, string> = { green: '--brand-700', amber: '--amber', red: '--red', violet: '--violet', blue: '--blue' }
-  const tone = (t: string) => ({ green: 'green-soft', amber: 'amber-soft', red: 'red-soft', violet: 'violet-soft', blue: 'blue-soft' })[t] || 'green-soft'
+  const toneBg = (t: string) => TONE_BG[t] || TONE_BG.green
+  const toneFg = (t: string) => TONE_FG[t] || TONE_FG.green
 
   return (
     <>
@@ -208,7 +222,7 @@ function ProductsTab() {
         <For each={stats()}>
           {(s) => (
             <div class="stat">
-              <div class="ic" style={`background: var(--${tone(s.tone)}); color: var(${TONE_FG[s.tone] || '--brand-700'});`}>
+              <div class="ic" style={`background: var(${toneBg(s.tone)}); color: var(${toneFg(s.tone)});`}>
                 <i class={`fa-solid ${s.icon}`}></i>
               </div>
               <b>{s.value}</b>
@@ -222,11 +236,19 @@ function ProductsTab() {
         <div class="admin-filters">
           <div class="afilter">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input placeholder="Cari kode / nama produk..." value={store.state.admin.search} onInput={(e) => { store.state.admin.search = e.currentTarget.value }} />
+            <input
+              placeholder="Cari kode / nama produk..."
+              value={store.state.admin.search}
+              onInput={(e) => store.patchAdmin({ search: e.currentTarget.value })}
+            />
           </div>
           <div class="afilter">
             <i class="fa-solid fa-layer-group"></i>
-            <select value={store.state.admin.cat} onChange={(e) => { store.state.admin.cat = e.currentTarget.value }} style="width:100%; background:var(--cream); border:1.5px solid transparent; border-radius:14px; padding:10px 12px; font-size:.8rem; font-weight:500; outline:none; appearance:none;">
+            <select
+              value={store.state.admin.cat}
+              onChange={(e) => store.patchAdmin({ cat: e.currentTarget.value })}
+              style="width: 100%; background: var(--cream); border: 1.5px solid transparent; border-radius: 14px; padding: 10px 12px; font-size: .8rem; font-weight: 500; outline: none; appearance: none;"
+            >
               <option value="all">Semua kategori</option>
               <For each={store.state.categories.filter((c) => c.id !== 'all')}>
                 {(c) => <option value={c.id}>{c.name}</option>}
@@ -240,7 +262,7 @@ function ProductsTab() {
             when={filtered().length > 0}
             fallback={<div class="empty3d"><div class="bubble"><i class="fa-solid fa-box-open"></i></div><h3>Tidak ada produk</h3><p>Ubah filter atau tambahkan produk baru.</p></div>}
           >
-            <For each={filtered()}>
+            <For each={filtered().slice(0, pg.display())}>
               {(p) => (
                 <div class="prow">
                   <div class="thumb">
@@ -253,14 +275,12 @@ function ProductsTab() {
                       <h4>{p.name}</h4>
                       <span class="tag idtag">{p.id}</span>
                       <Show when={store.isPromo(p)}><span class="tag disc">-{p.discount}%</span></Show>
-                      <Show when={p.stock <= 0}><span class="tag" style="background:var(--red-50); color:var(--red);">Habis</span></Show>
+                      <Show when={p.stock <= 0}><span class="tag" style="background: var(--red-soft); color: var(--red);">Habis</span></Show>
                     </div>
                     <p class="desc">{p.description}</p>
                     <div class="row2">
                       <span class="price">
-                        <Show when={store.isPromo(p)}>
-                          <s>{rupiah(p.price)}</s>
-                        </Show>
+                        <Show when={store.isPromo(p)}><s>{rupiah(p.price)}</s></Show>
                         <b classList={{ sale: store.isPromo(p) }}>{rupiah(store.effectivePrice(p))}</b>
                         <span>/{p.unit}</span>
                       </span>
@@ -274,6 +294,9 @@ function ProductsTab() {
                 </div>
               )}
             </For>
+            <Show when={pg.hasMore()}>
+              <pg.Sentinel />
+            </Show>
           </Show>
         </div>
       </div>
@@ -285,6 +308,8 @@ function ProductsTab() {
 /* Orders tab                                                       */
 /* --------------------------------------------------------------- */
 
+const ORDERS_PER_PAGE = 15 // parity with vanilla admin.js
+
 function OrdersTab() {
   const store = useStore()
 
@@ -294,10 +319,12 @@ function OrdersTab() {
     const q = store.state.admin.orderSearch.trim().toLowerCase()
     if (q) list = list.filter((o) =>
       o.id.toLowerCase().includes(q)
-      || (o.customer.name || '').toLowerCase().includes(q)
-      || (o.customer.phone || '').toLowerCase().includes(q))
+      || (o.customer?.name || '').toLowerCase().includes(q)
+      || (o.customer?.phone || '').includes(q))
     return list
   })
+
+  const pg = progressive(() => filtered().length, ORDERS_PER_PAGE, () => `${store.state.admin.orderSearch}|${store.state.admin.status}`)
 
   const counts = () => STATUS_ORDER.map((s) => ({ s, n: store.state.orders.filter((o) => o.status === s).length }))
 
@@ -319,13 +346,18 @@ function OrdersTab() {
     }
   }
 
+  const TONE_BG: Record<string, string> = { blue: '--blue-soft', amber: '--amber-soft', violet: '--violet-soft', green: '--green-soft', red: '--red-soft' }
+  const TONE_FG: Record<string, string> = { blue: '--blue', amber: '--amber', violet: '--violet', green: '--brand-700', red: '--red' }
+  const toneBg = (status: string) => TONE_BG[(STATUS_META[status]?.tone)] || TONE_BG.blue
+  const toneFg = (status: string) => TONE_FG[(STATUS_META[status]?.tone)] || TONE_FG.blue
+
   return (
     <>
       <div class="stats">
         <For each={counts()}>
           {(c) => (
             <div class="stat">
-              <div class="ic" style={`background: var(--${toneOf(c.s)}); color: var(--${metaColor(c.s)});`}>
+              <div class="ic" style={`background: var(${toneBg(c.s)}); color: var(${toneFg(c.s)});`}>
                 <i class={`fa-solid ${STATUS_META[c.s].icon}`}></i>
               </div>
               <b>{c.n}</b>
@@ -339,16 +371,24 @@ function OrdersTab() {
         <div class="admin-filters">
           <div class="afilter">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input placeholder="Cari id / nama / no. HP..." value={store.state.admin.orderSearch} onInput={(e) => { store.state.admin.orderSearch = e.currentTarget.value }} />
+            <input
+              placeholder="Cari id / nama / no. HP..."
+              value={store.state.admin.orderSearch}
+              onInput={(e) => store.patchAdmin({ orderSearch: e.currentTarget.value })}
+            />
           </div>
           <div class="afilter">
             <i class="fa-solid fa-filter"></i>
-            <select value={store.state.admin.status} onChange={(e) => { store.state.admin.status = e.currentTarget.value }} style="width:100%; background:var(--cream); border:1.5px solid transparent; border-radius:14px; padding:10px 12px; font-size:.8rem; font-weight:500; outline:none; appearance:none;">
+            <select
+              value={store.state.admin.status}
+              onChange={(e) => store.patchAdmin({ status: e.currentTarget.value })}
+              style="width: 100%; background: var(--cream); border: 1.5px solid transparent; border-radius: 14px; padding: 10px 12px; font-size: .8rem; font-weight: 500; outline: none; appearance: none;"
+            >
               <option value="all">Semua status</option>
               <For each={STATUS_ORDER}>{(s) => <option value={s}>{STATUS_META[s].label}</option>}</For>
             </select>
           </div>
-          <button class="pbtn" style="flex:none;" onClick={() => void store.loadOrders().then(() => store.toast('Pesanan diperbarui.'))}>
+          <button class="pbtn" style="flex: none;" onClick={() => void store.loadOrders().then(() => store.toast('Pesanan diperbarui.'))}>
             <i class="fa-solid fa-rotate"></i> Muat ulang
           </button>
         </div>
@@ -358,7 +398,7 @@ function OrdersTab() {
           fallback={<div class="empty3d"><div class="bubble"><i class="fa-solid fa-inbox"></i></div><h3>Belum ada pesanan</h3><p>Pesanan pembeli akan muncul di sini.</p></div>}
         >
           <div class="plist">
-            <For each={filtered()}>
+            <For each={filtered().slice(0, pg.display())}>
               {(o) => (
                 <div class="orow">
                   <div class="orow-top">
@@ -367,13 +407,13 @@ function OrdersTab() {
                       <div class="dt">{dateTimeICS(o.createdAt)}</div>
                     </div>
                     <div class="pay">
-                      <b>{rupiah(o.totalPrice)}</b>
-                      <span>{o.totalCount} barang</span>
+                      <b>{rupiah(orderTotal(o))}</b>
+                      <span>{orderCount(o)} barang</span>
                     </div>
                   </div>
                   <div class="orow-cust">
-                    <span><b>{o.customer.name}</b></span>
-                    <span>{o.customer.phone}</span>
+                    <span><b>{o.customer?.name}</b></span>
+                    <span>{o.customer?.phone}</span>
                   </div>
                   <div class="orow-foot">
                     <select
@@ -384,12 +424,12 @@ function OrdersTab() {
                       <For each={STATUS_ORDER}>{(s) => <option value={s}>{STATUS_META[s].label}</option>}</For>
                     </select>
                     <div class="acts">
-                      <button class="pbtn" onClick={() => { store.state.admin.details = o }}>
+                      <button class="pbtn" onClick={() => store.patchAdmin({ details: o })}>
                         <i class="fa-solid fa-eye"></i> Detail
                       </button>
                       <a
                         class="pbtn"
-                        href={`https://wa.me/${(o.customer.phone || '').replace(/\D/g, '').replace(/^0/, '62')}`}
+                        href={`https://wa.me/${(o.customer?.phone || '').replace(/\D/g, '').replace(/^0/, '62')}`}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -403,32 +443,14 @@ function OrdersTab() {
                 </div>
               )}
             </For>
+            <Show when={pg.hasMore()}>
+              <pg.Sentinel />
+            </Show>
           </div>
         </Show>
       </div>
     </>
   )
-}
-
-const TONE_BG: Record<string, string> = {
-  blue: '--blue-soft',
-  amber: '--amber-soft',
-  violet: '--violet-soft',
-  green: '--green-soft',
-  red: '--red-soft',
-}
-const TONE_FG: Record<string, string> = {
-  blue: '--blue',
-  amber: '--amber',
-  violet: '--violet',
-  green: '--brand-700',
-  red: '--red',
-}
-function toneOf(status: string): string {
-  return TONE_BG[(STATUS_META[status]?.tone)] ?? '--blue-soft'
-}
-function metaColor(status: string): string {
-  return TONE_FG[(STATUS_META[status]?.tone)] ?? '--blue'
 }
 
 /* --------------------------------------------------------------- */
@@ -504,7 +526,7 @@ function BannersTab() {
                   )}
                 </For>
               </div>
-              <button class="pbtn" style="justify-content:center;" onClick={() => pickers[slot.id]?.click()}>
+              <button class="pbtn" style="justify-content: center;" onClick={() => pickers[slot.id]?.click()}>
                 <i class={`fa-solid ${busy() === slot.id ? 'fa-circle-notch fa-spin' : 'fa-plus'}`}></i>
                 {busy() === slot.id ? 'Mengunggah...' : 'Tambah banner'}
               </button>

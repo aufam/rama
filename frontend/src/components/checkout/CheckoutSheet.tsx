@@ -17,7 +17,10 @@ export default function CheckoutSheet() {
 
   const [name, setName] = createSignal(saved?.name || '')
   const [phone, setPhone] = createSignal(saved?.phone || '')
-  const [member, setMember] = createSignal(saved?.member || '')
+  /* "No. Member" is optional in the form; it maps to CustomerInfo.id
+     (legacy localStorage entries only had a .member field — tolerate those) */
+  const legacy = saved ? ((saved as unknown as { member?: string }).member || '') : ''
+  const [member, setMember] = createSignal(saved?.id || legacy)
   const [detail, setDetail] = createSignal(savedDetail)
   const [notes, setNotes] = createSignal(saved?.notes || '')
   const [pin, setPin] = createSignal<{ lat: number; lng: number } | null>(savedPin)
@@ -25,8 +28,8 @@ export default function CheckoutSheet() {
   const [sending, setSending] = createSignal(false)
 
   const info = (): CustomerInfo => ({
-    id: '',
-    member: member().trim(),
+    /* backend requires this field — an empty member no. stays an empty string */
+    id: member().trim(),
     name: name().trim(),
     phone: phone().trim(),
     address: address(),
@@ -51,7 +54,9 @@ export default function CheckoutSheet() {
     try {
       order = await store.createOrder(info(), store.state.cart)
     } catch {
-      order = store.recordLocalOrder(info(), store.state.cart)
+      setSending(false)
+      store.toast('Gagal mengirim pesanan — periksa koneksi internet Anda.', 'err')
+      return
     }
     setSending(false)
 

@@ -1,16 +1,27 @@
 import { For, Show, createResource, createSignal } from 'solid-js'
 import { useStore } from '../store-context'
-import { STATUS_META, STATUS_ORDER, dateTimeICS, pinUrl, rupiah, type Order, type OrderStatus } from '../types'
+import { STATUS_META, STATUS_ORDER, dateTimeICS, orderCount, orderTotal, pinUrl, rupiah, waLink, type Order, type OrderStatus } from '../types'
 
 export default function TrackingPage() {
   const store = useStore()
   const [input, setInput] = createSignal(store.state.trackId || '')
+  const [refreshing, setRefreshing] = createSignal(false)
 
   /* re-fetch whenever the routed order id changes */
   const [order, { refetch }] = createResource(
     () => store.state.trackId,
     async (id) => (id ? store.findOrder(id) : null),
   )
+
+  async function refresh(): Promise<void> {
+    if (refreshing()) return
+    setRefreshing(true)
+    try {
+      await refetch()
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   return (
     <div class="track-page">
@@ -20,9 +31,14 @@ export default function TrackingPage() {
           <h1>Lacak <span>Pesanan</span></h1>
           <p>Pantau status pesanan secara real-time</p>
         </div>
-        <button class="side" onClick={() => store.navigate('home')} aria-label="Beranda">
-          <i class="fa-solid fa-house"></i>
-        </button>
+        <div style="margin-left: auto; display: inline-flex; gap: 8px;">
+          <button class="side" style="margin-left: 0;" onClick={() => void refresh()} aria-label="Segarkan status">
+            <i class={`fa-solid ${refreshing() ? 'fa-rotate fa-spin' : 'fa-rotate'}`}></i>
+          </button>
+          <button class="side" style="margin-left: 0;" onClick={() => store.navigate('home')} aria-label="Beranda">
+            <i class="fa-solid fa-house"></i>
+          </button>
+        </div>
       </div>
 
       <form
@@ -115,6 +131,16 @@ function TrackingCard(props: { order: Order; onRefresh: () => void }) {
         <span>{meta().desc}</span>
       </div>
 
+      <a
+        class="btn btn-wa btn-flex"
+        style="justify-content: center;"
+        href={waLink(store.adminWa, `Halo Rama Swalayan, saya ingin menanyakan status pesanan saya dengan No. Pesanan ${o.id}`)}
+        target="_blank"
+        rel="noreferrer"
+      >
+        <i class="fa-brands fa-whatsapp"></i> Tanya Status via WhatsApp
+      </a>
+
       <div>
         <div class="sect-title"><i class="fa-solid fa-boxes-stacking"></i> Daftar Barang</div>
         <div class="goods">
@@ -131,8 +157,8 @@ function TrackingCard(props: { order: Order; onRefresh: () => void }) {
             )}
           </For>
           <div class="goods-total">
-            <b>Total ({o.totalCount} barang)</b>
-            <span class="val">{rupiah(o.totalPrice)}</span>
+            <b>Total ({orderCount(o)} barang)</b>
+            <span class="val">{rupiah(orderTotal(o))}</span>
           </div>
         </div>
       </div>
@@ -141,7 +167,7 @@ function TrackingCard(props: { order: Order; onRefresh: () => void }) {
         <div class="sect-title"><i class="fa-solid fa-house-user"></i> Data Penerima</div>
         <div class="info-box">
           <b>{o.customer.name}</b> · {o.customer.phone}
-          <Show when={o.customer.member}> · Member {o.customer.member}</Show>
+          <Show when={o.customer.id}> · Member {o.customer.id}</Show>
           <br />
           <Show when={pin} fallback={<>{o.customer.address || '—'}</>}>
             <a href={pinUrl(pin!.lat, pin!.lng)} target="_blank" rel="noreferrer" style="color: var(--red); font-weight: 700;">

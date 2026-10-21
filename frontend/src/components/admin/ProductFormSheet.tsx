@@ -11,14 +11,13 @@ export default function ProductFormSheet() {
   let file: HTMLInputElement | undefined
 
   function setField(key: keyof ProductDraft, value: string) {
-    const draft = store.state.admin.form
-    if (draft) (draft as unknown as Record<string, unknown>)[key as string] = value
+    store.patchForm(key, value)
   }
 
   async function upload(files: FileList | null) {
     const file = files?.[0]
     if (!file || !f()) return
-    store.state.admin.imgBusy = true
+    store.patchAdmin({ imgBusy: true })
     try {
       const url = await store.uploadImage(file)
       store.setImage(url)
@@ -26,7 +25,7 @@ export default function ProductFormSheet() {
     } catch {
       store.toast('Gagal unggah gambar.', 'err')
     } finally {
-      store.state.admin.imgBusy = false
+      store.patchAdmin({ imgBusy: false })
     }
   }
 

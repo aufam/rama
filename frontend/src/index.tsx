@@ -7,7 +7,6 @@ import './index.css'
 
 const store = createAppStore()
 store.boot()
-;(window as unknown as { __store?: unknown }).__store = store
 
 render(
   () => (

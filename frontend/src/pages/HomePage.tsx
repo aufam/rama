@@ -2,7 +2,13 @@ import { For, Show, createMemo } from 'solid-js'
 import { useStore } from '../store-context'
 import ProductCard from '../components/catalog/ProductCard'
 import BannerPager from '../components/catalog/BannerPager'
+import { progressive } from '../components/ui/progressive'
 import { isPromo, type Product } from '../types'
+
+/* parity with the vanilla kiosk.js lazy rendering */
+const CAT_RENDER_BATCH = 3 // 3 category sections per scroll batch
+const GRID_RENDER_BATCH = 20 // 20 products per scroll batch on filtered views
+const PRODUCTS_PER_SECTION = 8
 
 export default function HomePage() {
   const store = useStore()
@@ -27,6 +33,10 @@ export default function HomePage() {
       .map((c) => ({ cat: c, items: store.state.products.filter((p) => p.category === c.id) }))
       .filter((s) => s.items.length > 0),
   )
+
+  /* lazy batches (vanilla parity) — reset when the visitor changes filter */
+  const gridPg = progressive(() => list().length, GRID_RENDER_BATCH, () => `${store.state.category}|${store.state.query}`)
+  const secPg = progressive(() => sections().length, CAT_RENDER_BATCH, () => store.state.category)
 
   const landscape = () => store.state.banners.landscape.filter(Boolean)
   const sq1 = () => store.state.banners.square1.filter(Boolean)
@@ -112,13 +122,19 @@ export default function HomePage() {
             }
           >
             <div class="grid">
-              <For each={list()}>{(p) => <ProductCard product={p} />}</For>
+              <For each={list().slice(0, gridPg.display())}>{(p) => <ProductCard product={p} />}</For>
             </div>
+            <Show when={gridPg.hasMore()}>
+              <div class="lazy-hint">
+                <div class="spinner" />
+              </div>
+              <gridPg.Sentinel />
+            </Show>
           </Show>
         </section>
       </Show>
 
-      <For each={filtered() ? [] : sections()}>
+      <For each={filtered() ? [] : sections().slice(0, secPg.display())}>
         {(s) => (
           <section>
             <div class="section-head">
@@ -126,11 +142,18 @@ export default function HomePage() {
               <button class="side" onClick={() => store.setCategory(s.cat.id)}>Lihat semua <i class="fa-solid fa-chevron-right"></i></button>
             </div>
             <div class="rail">
-              <For each={s.items.slice(0, 8)}>{(p) => <ProductCard product={p} />}</For>
+              <For each={s.items.slice(0, PRODUCTS_PER_SECTION)}>{(p) => <ProductCard product={p} />}</For>
             </div>
           </section>
         )}
       </For>
+
+      <Show when={!filtered() && secPg.hasMore() && sections().length > CAT_RENDER_BATCH}>
+        <div class="lazy-hint">
+          <div class="spinner" />
+        </div>
+        <secPg.Sentinel />
+      </Show>
 
       <Show when={store.state.products.length === 0}>
         <div class="empty3d">

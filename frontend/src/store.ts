@@ -5,9 +5,6 @@ import { createMemo } from 'solid-js'
 import { createStore, produce } from 'solid-js/store'
 import {
   ADMIN_WA,
-  DEFAULT_BANNERS,
-  DEFAULT_CATEGORIES,
-  DEFAULT_PRODUCTS,
   STORAGE_KEYS,
   effectivePrice,
   hasPin,
@@ -25,7 +22,7 @@ import {
   type ProductDraft,
 } from './types'
 
-export type View = 'home' | 'cart' | 'history' | 'tracking' | 'admin'
+export type View = 'home' | 'cart' | 'history'
 
 export interface AppState {
   /* routing */
@@ -66,8 +63,6 @@ export interface AppState {
   }
 }
 
-const VIEWS: View[] = ['home', 'cart', 'history', 'tracking', 'admin']
-
 function readToken(): string | null {
   try { return localStorage.getItem(STORAGE_KEYS.AUTH) } catch { return null }
 }
@@ -78,7 +73,7 @@ function readQuery(name: string): string {
 
 function readRoute(): { view: View; id: string } {
   const v = readQuery('view')
-  const view = (VIEWS.includes(v as View) ? v : 'home') as View
+  const view = (['home', 'cart', 'history'].includes(v) ? v : 'home') as View
   return { view, id: readQuery('id') }
 }
 
@@ -98,10 +93,10 @@ export function createAppStore() {
 
   const [state, setState] = createStore<AppState>({    view: initialRoute.view,
     trackId: initialRoute.id,
-    categories: lsRead(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES),
-    products: lsRead(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS),
-    banners: lsRead(STORAGE_KEYS.BANNERS, DEFAULT_BANNERS),
-    orders: lsRead(STORAGE_KEYS.ORDERS, []),
+    categories: [],
+    products: [],
+    banners: { landscape: [], square1: [], square2: [] },
+    orders: [],
     cart: lsRead(STORAGE_KEYS.CART, []),
     customer: lsRead(STORAGE_KEYS.CUSTOMER_INFO, null),
     history: lsRead(STORAGE_KEYS.MY_ORDER_HISTORY, []),
@@ -145,7 +140,6 @@ export function createAppStore() {
   function syncUrl(replace = false): void {
     const p = new URLSearchParams()
     if (state.view !== 'home') p.set('view', state.view)
-    if (state.view === 'tracking' && state.trackId) p.set('id', state.trackId)
     if (state.view === 'home' && state.category !== 'all') p.set('category', state.category)
     if (state.view === 'home' && state.query) p.set('q', state.query)
     const qs = p.toString()
@@ -153,10 +147,27 @@ export function createAppStore() {
     window.history[replace ? 'replaceState' : 'pushState'](null, '', url)
   }
 
-  function navigate(view: View, opts: { id?: string; keepFilters?: boolean } = {}): void {
+  function navigate(view: View | 'tracking', opts: { id?: string; keepFilters?: boolean } = {}): void {
+    /* tracking is its own document (tracking.html) */
+    if (view === 'tracking') {
+      const id = (opts.id || '').trim()
+      const qs = id ? `?id=${encodeURIComponent(id)}` : ''
+      if (window.location.pathname.endsWith('tracking.html')) {
+        /* in-place: sync the URL and the reactive track id (the page re-fetches) */
+        setState('trackId', id)
+        window.history.replaceState(null, '', `tracking.html${qs}`)
+      } else {
+        window.location.assign(`tracking.html${qs}`)
+      }
+      return
+    }
+    /* navigating home/cart/history from the tracking page goes back to the storefront */
+    if (window.location.pathname.endsWith('tracking.html')) {
+      window.location.assign(view === 'home' ? 'index.html' : `index.html?view=${view}`)
+      return
+    }
+
     setState('view', view)
-    if ('id' in opts) setState('trackId', opts.id || '')
-    if (view !== 'tracking') setState('trackId', '')
     /* coming back to the storefront always starts from a clean slate */
     if (view === 'home' && !opts.keepFilters) {
       setState('query', '')
@@ -214,12 +225,9 @@ export function createAppStore() {
     try {
       const res = await request('api/categories')
       const categories: Category[] = await res.json()
-      lsWrite(STORAGE_KEYS.CATEGORIES, categories)
       setState('categories', categories)
     } catch (e) {
-      const cached = lsRead<Category[] | null>(STORAGE_KEYS.CATEGORIES, null)
-      setState('categories', cached?.length ? cached : DEFAULT_CATEGORIES)
-      if (!cached && state.products.length && state.view !== 'admin') toast('Mode offline — sebagian data mungkin lama', 'err')
+      toast(handleError(e, 'Gagal memuat kategori').message, 'err')
     }
   }
 
@@ -227,14 +235,10 @@ export function createAppStore() {
     try {
       const res = await request('api/products')
       const products: Product[] = await res.json()
-      lsWrite(STORAGE_KEYS.PRODUCTS, products)
       setState('products', products)
       syncCartPrices(products)
     } catch (e) {
-      const cached = lsRead<Product[] | null>(STORAGE_KEYS.PRODUCTS, null)
-      setState('products', cached?.length ? cached : DEFAULT_PRODUCTS)
-      syncCartPrices(state.products)
-      if (!cached && state.view !== 'admin') handleError(e, 'Gagal memuat produk')
+      toast(handleError(e, 'Gagal memuat produk').message, 'err')
     }
   }
 
@@ -242,11 +246,9 @@ export function createAppStore() {
     try {
       const res = await request('api/banners')
       const banners: BannerSet = await res.json()
-      lsWrite(STORAGE_KEYS.BANNERS, banners)
       setState('banners', { landscape: banners.landscape || [], square1: banners.square1 || [], square2: banners.square2 || [] })
-    } catch {
-      const cached = lsRead<BannerSet | null>(STORAGE_KEYS.BANNERS, null)
-      setState('banners', cached ?? DEFAULT_BANNERS)
+    } catch (e) {
+      toast(handleError(e, 'Gagal memuat banner').message, 'err')
     }
   }
 
@@ -254,10 +256,8 @@ export function createAppStore() {
     try {
       const res = await request('api/auth/orders', { headers: tokenHeader() })
       const orders: Order[] = await res.json()
-      lsWrite(STORAGE_KEYS.ORDERS, orders)
       setState('orders', orders)
     } catch (e) {
-      setState('orders', lsRead(STORAGE_KEYS.ORDERS, []))
       if (state.authed) toast(handleError(e, 'Gagal memuat pesanan').message, 'err')
     }
   }
@@ -334,34 +334,37 @@ export function createAppStore() {
     setState('done', order)
   }
 
-  /** Offline fallback order — stays findable on the tracking/local history pages. */
-  function recordLocalOrder(info: CustomerInfo, items: CartItem[]): Order {
-    const now = new Date().toISOString()
-    const order: Order = {
-      id: `RAMA-${Math.floor(100000 + Math.random() * 900000)}`,
-      createdAt: now,
-      updatedAt: now,
-      status: 'received',
-      customer: {
-        id: (info.member || '').trim(),
-        name: (info.name || 'Pelanggan Rama').trim(),
-        phone: (info.phone || '').trim(),
-        address: (info.address || '').trim(),
-        notes: (info.notes || '').trim(),
-      },
-      items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, unit: i.unit || 'item', quantity: i.quantity, notes: i.notes || '' })),
-      totalCount: items.reduce((a, i) => a + i.quantity, 0),
-      totalPrice: items.reduce((a, i) => a + i.price * i.quantity, 0),
-    }
-    setState('orders', (curr) => [order, ...curr])
-    lsWrite(STORAGE_KEYS.ORDERS, state.orders)
-    return order
-  }
-
 
   function saveCustomer(info: CustomerInfo): void {
     setState('customer', info)
     lsWrite(STORAGE_KEYS.CUSTOMER_INFO, info)
+  }
+
+  /** Refresh my order statuses from the server (history page refresh button).
+      Returns how many statuses actually changed; throws when nothing loaded. */
+  async function refreshMyOrders(): Promise<number> {
+    const ids = [...new Set(state.history.map((o) => o?.id).filter(Boolean))]
+    if (!ids.length) return 0
+    const results = await Promise.allSettled(ids.map(async (id) => {
+      const res = await fetch(`api/order?id=${encodeURIComponent(id)}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return (await res.json()) as Order
+    }))
+    const ok = results.filter((r) => r.status === 'fulfilled') as PromiseFulfilledResult<Order>[]
+    if (!ok.length) throw new Error('Gagal menyegarkan status pesanan.')
+    let changed = 0
+    for (const r of ok) {
+      const fresh = r.value
+      if (!fresh?.id) continue
+      const prev = state.history.find((o) => o.id === fresh.id)
+      if (prev && prev.status !== fresh.status) changed++
+      const status = fresh.status
+      const updatedAt = fresh.updatedAt || new Date().toISOString()
+      setState('history', (hist) => hist.map((o) => (o.id === fresh.id ? { ...o, status, updatedAt } : o)))
+      setState('orders', (orders) => orders.map((o) => (o.id === fresh.id ? { ...o, status, updatedAt } : o)))
+    }
+    lsWrite(STORAGE_KEYS.MY_ORDER_HISTORY, state.history)
+    return changed
   }
 
   function addToHistory(order: Order): void {
@@ -374,22 +377,26 @@ export function createAppStore() {
     if (!id) return null
     try {
       const res = await fetch(`api/order?id=${encodeURIComponent(id)}`)
-      if (res.ok) return await res.json()
-    } catch { /* offline */ }
-    const local = state.orders.find((o) => o.id.toUpperCase() === id.toUpperCase())
-      || state.history.find((o) => o.id.toUpperCase() === id.toUpperCase())
-    return local ?? null
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return (await res.json()) as Order
+    } catch (e) {
+      toast(handleError(e, 'Gagal memuat pesanan — periksa koneksi & nomor pesanan.').message, 'err')
+      return null
+    }
   }
 
   async function createOrder(info: CustomerInfo, items: CartItem[]): Promise<Order> {
     const totalCount = items.reduce((a, i) => a + i.quantity, 0)
     const totalPrice = items.reduce((a, i) => a + i.price * i.quantity, 0)
+    /** fallback id in case the response is missing one (backend assigns the real id) */
+    const fallbackId = `RAMA-${Math.floor(100000 + Math.random() * 900000)}`
     const payload = {
+      id: fallbackId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: 'received' as OrderStatus,
       customer: {
-        id: (info.member || '').trim(),
+        id: (info.id || '').trim(),
         name: (info.name || 'Pelanggan Rama').trim(),
         phone: (info.phone || '').trim(),
         address: (info.address || '').trim(),
@@ -401,7 +408,13 @@ export function createAppStore() {
     }
     const res = await fetch('api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return await res.json()
+    /* the backend only returns { "id": "<created id>" } — merge it into the
+       payload so the caller gets a valid, complete Order object */
+    const json = await res.json() as { id?: string }
+    return {
+      ...payload,
+      id: json.id || payload.id,
+    }
   }
 
   /* ------------------------------------------------------------------
@@ -419,7 +432,8 @@ export function createAppStore() {
   function logout(): void {
     try { localStorage.removeItem(STORAGE_KEYS.AUTH) } catch { /* noop */ }
     setState('authed', false)
-    navigate('home')
+    /* stays on the admin page — the login screen takes over */
+    toast('Anda telah keluar.')
   }
 
   function draftFrom(product: Product | null): ProductDraft {
@@ -440,6 +454,19 @@ export function createAppStore() {
 
   function openForm(product: Product | null): void {
     setState('admin', 'form', draftFrom(product))
+  }
+
+  /** One prod-safe write helper for every admin-panel field. */
+  function patchAdmin(patch: Partial<AppState['admin']>): void {
+    setState('admin', patch)
+  }
+
+  function openCsv(mode: 'download' | 'upload' | null): void {
+    setState('admin', 'csv', mode)
+  }
+
+  function patchForm(key: keyof ProductDraft, value: string): void {
+    setState('admin', 'form', key, value as never)
   }
 
   function closeForm(): void {
@@ -492,15 +519,12 @@ export function createAppStore() {
     const ix = products.findIndex((p) => p.id === product.id)
     if (ix > -1) products[ix] = product
     else products.unshift(product)
-    lsWrite(STORAGE_KEYS.PRODUCTS, products)
     setState('products', products)
   }
 
   async function deleteProduct(id: string): Promise<void> {
     await request('api/auth/products', { method: 'DELETE', headers: { ...tokenHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
-    const products = state.products.filter((p) => p.id !== id)
-    lsWrite(STORAGE_KEYS.PRODUCTS, products)
-    setState('products', products)
+    setState('products', (prev) => prev.filter((p) => p.id !== id))
     toast('Produk dihapus.')
   }
 
@@ -512,7 +536,6 @@ export function createAppStore() {
 
   async function saveBanners(banners: BannerSet): Promise<void> {
     await request('api/auth/banners', { method: 'POST', headers: { ...tokenHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify(banners) })
-    lsWrite(STORAGE_KEYS.BANNERS, banners)
     setState('banners', banners)
   }
 
@@ -533,23 +556,20 @@ export function createAppStore() {
   }
 
   async function updateOrderStatus(id: string, status: string): Promise<void> {
-    const order = await findOrder(id)
+    const order = state.orders.find((o) => o.id.toUpperCase() === id.toUpperCase())
     if (!order) throw new Error('Pesanan tidak ditemukan.')
-    order.status = status
-    order.updatedAt = new Date().toISOString()
-    await request('api/auth/orders', { method: 'POST', headers: { ...tokenHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify(order) })
+    const next = { ...order, status, updatedAt: new Date().toISOString() }
+    await request('api/auth/orders', { method: 'POST', headers: { ...tokenHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
     setState('orders', (orders) => {
       const idx = orders.findIndex((o) => o.id.toUpperCase() === id.toUpperCase())
-      if (idx === -1) return [...orders, order]
-      return orders.map((o, i) => (i === idx ? order : o))
+      if (idx === -1) return [...orders, next]
+      return orders.map((o, i) => (i === idx ? next : o))
     })
-    lsWrite(STORAGE_KEYS.ORDERS, state.orders)
   }
 
   async function deleteOrder(id: string): Promise<void> {
     await request('api/auth/orders', { method: 'DELETE', headers: { ...tokenHeader(), 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     setState('orders', (orders) => orders.filter((o) => o.id !== id))
-    lsWrite(STORAGE_KEYS.ORDERS, state.orders)
     toast('Pesanan dihapus.')
   }
 
@@ -559,7 +579,6 @@ export function createAppStore() {
   return {
     /* reactive state (read directly in components) */
     state,
-    _setState: setState,
     /* routing & nav */
     navigate,
     handlePopState,
@@ -572,7 +591,6 @@ export function createAppStore() {
     openCheckout: () => { setState('done', null); setState('checkout', true) },
     closeCheckout: () => setState('checkout', false),
     finish,
-    recordLocalOrder,
     /* derived */
     cartCount,
     cartTotal,
@@ -596,6 +614,7 @@ export function createAppStore() {
     loadOrders,
     findOrder,
     createOrder,
+    refreshMyOrders,
     saveCustomer,
     addToHistory,
     updateOrderStatus,
@@ -603,6 +622,9 @@ export function createAppStore() {
     productById: (id: string) => state.products.find((p) => p.id === id) ?? null,
     /* admin */
     adminWa: ADMIN_WA,
+    patchAdmin,
+    openCsv,
+    patchForm,
     login,
     logout,
     openForm,

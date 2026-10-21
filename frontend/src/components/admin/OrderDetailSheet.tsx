@@ -1,6 +1,6 @@
 import { For, Show } from 'solid-js'
 import { useStore } from '../../store-context'
-import { STATUS_META, dateTimeFull, rupiah } from '../../types'
+import { STATUS_META, dateTimeFull, orderCount, orderTotal, rupiah } from '../../types'
 import type { Order } from '../../types'
 
 /** Full detail view for an order, opened from the admin orders tab. */
@@ -21,7 +21,7 @@ export default function OrderDetailSheet() {
                   <h3>Detail {order().id}</h3>
                   <p>{dateTimeFull(order().createdAt)}</p>
                 </div>
-                <button class="sheet-x" onClick={() => { store.state.admin.details = null }} aria-label="Tutup">
+                <button class="sheet-x" onClick={() => { store.patchAdmin({ details: null }) }} aria-label="Tutup">
                   <i class="fa-solid fa-xmark"></i>
                 </button>
               </div>
@@ -43,7 +43,7 @@ export default function OrderDetailSheet() {
                   <div>
                     <b>{order().customer.name}</b><br />
                     {order().customer.phone}
-                    <Show when={order().customer.member}> · Member {order().customer.member}</Show>
+                    <Show when={order().customer.id}> · Member {order().customer.id}</Show>
                   </div>
                 </div>
 
@@ -73,8 +73,8 @@ export default function OrderDetailSheet() {
                     )}
                   </For>
                   <div class="goods-total">
-                    <b>Total ({order().totalCount} barang)</b>
-                    <span class="val">{rupiah(order().totalPrice)}</span>
+                    <b>Total ({orderCount(order())} barang)</b>
+                    <span class="val">{rupiah(orderTotal(order()))}</span>
                   </div>
                 </div>
               </div>
@@ -88,7 +88,7 @@ export default function OrderDetailSheet() {
                 >
                   <i class="fa-brands fa-whatsapp"></i> Hubungi
                 </a>
-                <button class="btn btn-primary btn-flex" onClick={() => { store.state.admin.details = null }}>
+                <button class="btn btn-primary btn-flex" onClick={() => { store.patchAdmin({ details: null }) }}>
                   Tutup
                 </button>
               </div>

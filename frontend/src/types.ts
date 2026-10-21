@@ -34,8 +34,8 @@ export interface CartItem {
 export type OrderStatus = 'received' | 'preparing' | 'delivering' | 'completed'
 
 export interface CustomerInfo {
+  /** member number — the browser form labels it "No. Member" */
   id: string
-  member?: string
   name: string
   phone: string
   address: string
@@ -101,46 +101,11 @@ export const STATUS_META: Record<string, { label: string; icon: string; desc: st
 export const ADMIN_WA = '6285327961606'
 
 export const STORAGE_KEYS = {
-  PRODUCTS: 'rama_inventory_products_v3',
-  CATEGORIES: 'rama_inventory_categories_v3',
   CART: 'rama_customer_cart_v3',
-  ORDERS: 'rama_customer_orders_v1',
   AUTH: 'rama_admin_token_v1',
-  BANNERS: 'rama_promo_banners_v1',
   MY_ORDER_HISTORY: 'rama_my_order_history_v1',
   CUSTOMER_INFO: 'rama_customer_info_v1',
 } as const
-
-const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'all', name: 'Semua Produk', icon: 'fa-layer-group' },
-  { id: 'minuman', name: 'Minuman Segar', icon: 'fa-mug-hot' },
-  { id: 'camilan', name: 'Camilan & Roti', icon: 'fa-cookie-bite' },
-  { id: 'segar', name: 'Buah & Sayur Segar', icon: 'fa-apple-whole' },
-  { id: 'olahan-susu', name: 'Susu & Telur', icon: 'fa-egg' },
-  { id: 'perawatan', name: 'Perawatan Diri', icon: 'fa-pump-soap' },
-  { id: 'kebutuhan-rumah', name: 'Kebutuhan Rumah', icon: 'fa-spray-can-sparkles' },
-]
-
-const DEFAULT_PRODUCTS: Product[] = [
-  { id: 'prod-1', name: 'Air Mineral Pegunungan 600ml', category: 'minuman', price: 5000, unit: 'botol', stock: 120, image: '', description: 'Air mineral alami segar dan higienis dari mata air pegunungan terpilih.' },
-  { id: 'prod-2', name: 'Es Teh Susu Manis 500ml', category: 'minuman', price: 18000, unit: 'cup', stock: 45, image: '', description: 'Seduhan teh hitam premium berpadu dengan susu kental manis lembut dan es segar.' },
-  { id: 'prod-3', name: 'Kopi Cold Brew Arabika 250ml', category: 'minuman', price: 24000, unit: 'botol', stock: 30, image: '', description: 'Kopi cold brew seduh dingin 16 jam dengan biji kopi Arabika murni rendah asam.' },
-  { id: 'prod-4', name: 'Keripik Kentang Panggang BBQ 150g', category: 'camilan', price: 16500, unit: 'bungkus', stock: 60, image: '', description: 'Keripik kentang renyah bergelombang dengan bumbu tabur barbeque gurih lezat.' },
-  { id: 'prod-5', name: 'Roti Croissant Mentega Gurih', category: 'camilan', price: 15000, unit: 'item', stock: 25, image: '', description: 'Pastry khas Prancis berlapis renyah dengan aroma mentega murni panggang hangat.' },
-  { id: 'prod-6', name: 'Kukis Cokelat Lembut Lumer', category: 'camilan', price: 12000, unit: 'keping', stock: 40, image: '', description: 'Kukis lembut lumer (soft-baked) dengan limpahan choco chips cokelat Belgia.' },
-  { id: 'prod-7', name: 'Apel Fuji Segar (Isi 3 Buah)', category: 'segar', price: 28000, unit: 'paket', stock: 18, image: '', description: 'Apel Fuji manis renyah kaya vitamin dan serat, disajikan segar pilihan terbaik.' },
-  { id: 'prod-8', name: 'Pisang Cavendish Manis 1kg', category: 'segar', price: 22000, unit: 'kg', stock: 20, image: '', description: 'Pisang Cavendish kuning matang alami berkulit mulus dan bertekstur legit.' },
-  { id: 'prod-9', name: 'Susu Sapi Murni Pasteurisasi 1L', category: 'olahan-susu', price: 26000, unit: 'karton', stock: 35, image: '', description: '100% susu segar murni pasteurisasi kaya kalsium untuk daya tahan tubuh keluarga.' },
-  { id: 'prod-10', name: 'Telur Ayam Organik Omega-3 (Isi 10)', category: 'olahan-susu', price: 32000, unit: 'kotak', stock: 22, image: '', description: 'Telur segar peternakan bebas antibiotik dengan kandungan nutrisi Omega-3 tinggi.' },
-  { id: 'prod-11', name: 'Sabun Mandi Cair Lidah Buaya 500ml', category: 'perawatan', price: 45000, unit: 'botol', stock: 15, image: '', description: 'Sabun cair pelembap kulit dengan ekstrak lidah buaya alami dan Vitamin E lembut.' },
-  { id: 'prod-12', name: 'Pembersih Tangan Antiseptik Gel 100ml', category: 'perawatan', price: 12500, unit: 'botol', stock: 50, image: '', description: 'Gel pembersih tangan alkohol 70% efektif membunuh 99.9% kuman tanpa lengket.' },
-  { id: 'prod-13', name: 'Semprotan Pembersih Serbaguna Citrus 500ml', category: 'kebutuhan-rumah', price: 27500, unit: 'botol', stock: 19, image: '', description: 'Cairan pembersih lantai dan meja anti-lemak beraroma jeruk nipis menyegarkan.' },
-  { id: 'prod-14', name: 'Tisu Wajah Lembut 3 Lapis 200 Lembar', category: 'kebutuhan-rumah', price: 14000, unit: 'kotak', stock: 40, image: '', description: 'Tisu wajah lembut 3-ply dari serat alami murni yang higienis dan tidak mudah robek.' },
-]
-
-const DEFAULT_BANNERS: BannerSet = { landscape: [], square1: [], square2: [] }
-
-export { DEFAULT_CATEGORIES, DEFAULT_PRODUCTS, DEFAULT_BANNERS }
 
 /* ---------- pricing ---------- */
 
@@ -207,11 +172,11 @@ export function orderMessage(
   const line = '-------------------------------'
   let t = '🛒 PESANAN BARU — RAMA SWALAYAN\n'
   t += `📅 ${now}\n${line}\n`
-  if (customer.name || customer.phone || customer.member || customer.address || customer.notes) {
+  if (customer.name || customer.phone || customer.id || customer.address || customer.notes) {
     t += '👤 DATA PEMESAN\n'
     if (customer.name) t += `• Nama: ${customer.name}\n`
     if (customer.phone) t += `• No. WhatsApp: ${customer.phone}\n`
-    if (customer.member) t += `• No. Member: ${customer.member}\n`
+    if (customer.id) t += `• No. Member: ${customer.id}\n`
     if (customer.address) t += `• Alamat Kirim: ${customer.address}\n`
     if (customer.notes) t += `• Catatan: ${customer.notes}\n`
     t += `${line}\n`

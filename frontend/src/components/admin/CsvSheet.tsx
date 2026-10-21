@@ -10,7 +10,7 @@ export default function CsvSheet() {
   const [file, setFile] = createSignal<File | null>(null)
 
   function close() {
-    store.state.admin.csv = null
+    store.openCsv(null)
     setPass('')
     setFile(null)
   }
@@ -19,7 +19,7 @@ export default function CsvSheet() {
     e.preventDefault()
     if (!pass().trim()) { store.toast('Password admin wajib diisi.', 'err'); return }
     if (mode() === 'upload' && !file()) { store.toast('Pilih file CSV terlebih dahulu.', 'err'); return }
-    store.state.admin.csvBusy = true
+    store.patchAdmin({ csvBusy: true })
     try {
       if (mode() === 'upload') {
         await store.uploadCsv(file()!, pass())
@@ -35,7 +35,7 @@ export default function CsvSheet() {
         ? 'Password salah atau sesi berakhir.'
         : 'Gagal memproses CSV.', 'err')
     } finally {
-      store.state.admin.csvBusy = false
+      store.patchAdmin({ csvBusy: false })
     }
   }
 
