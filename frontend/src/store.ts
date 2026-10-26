@@ -91,7 +91,8 @@ function lsWrite(key: string, value: unknown): void {
 export function createAppStore() {
   const initialRoute = readRoute()
 
-  const [state, setState] = createStore<AppState>({    view: initialRoute.view,
+  const [state, setState] = createStore<AppState>({
+    view: initialRoute.view,
     trackId: initialRoute.id,
     categories: [],
     products: [],
@@ -389,9 +390,7 @@ export function createAppStore() {
     const totalCount = items.reduce((a, i) => a + i.quantity, 0)
     const totalPrice = items.reduce((a, i) => a + i.price * i.quantity, 0)
     /** fallback id in case the response is missing one (backend assigns the real id) */
-    const fallbackId = `RAMA-${Math.floor(100000 + Math.random() * 900000)}`
     const payload = {
-      id: fallbackId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: 'received' as OrderStatus,
@@ -410,10 +409,10 @@ export function createAppStore() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     /* the backend only returns { "id": "<created id>" } — merge it into the
        payload so the caller gets a valid, complete Order object */
-    const json = await res.json() as { id?: string }
+    const json = await res.json() as { id: string }
     return {
       ...payload,
-      id: json.id || payload.id,
+      id: json.id,
     }
   }
 
